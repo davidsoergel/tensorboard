@@ -153,6 +153,8 @@ public final class Vulcanize {
       }
     }
     stack.add(inputPath);
+    System.err.println("READING " + inputPath.toString());
+    System.err.println(webfiles.get(inputPath));
     Document document = parse(Files.readAllBytes(webfiles.get(inputPath)));
     transform(document);
     if (wantsCompile) {

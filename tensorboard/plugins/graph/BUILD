@@ -2,6 +2,7 @@
 # TensorBoard plugin for graphs
 
 package(default_visibility = ["//tensorboard:internal"])
+# package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
