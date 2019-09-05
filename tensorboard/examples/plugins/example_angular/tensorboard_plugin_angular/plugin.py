@@ -64,6 +64,6 @@ class ExamplePlugin(base_plugin.TBPlugin):
     }
 
   def frontend_metadata(self):
-    return super(ExamplePlugin, self).frontend_metadata()._replace(
+    return base_plugin.FrontendMetadata(
         es_module_path="/static/index.js",
     )
