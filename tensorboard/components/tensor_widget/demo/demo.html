@@ -22,7 +22,8 @@ limitations under the License.
     <meta charset="utf-8" />
     <title>TensorWidget Demo</title>
 
-    <link rel="stylesheet" type="text/css" href="demo/demo.css" />
+    <link rel="stylesheet" type="text/css" href="../tensor-widget.css" />
+    <link rel="stylesheet" type="text/css" href="demo.css" />
   </head>
 
   <body>
@@ -32,17 +33,19 @@ limitations under the License.
       <span id="tensor-widget-version"></span>
     </p>
 
+    <div id="tensor0" class="tensor"></div>
+    <div id="tensor1" class="tensor"></div>
+    <div id="tensor2" class="tensor"></div>
+    <div id="tensor3" class="tensor"></div>
+    <div id="tensor4" class="tensor"></div>
+    <div id="tensor5" class="tensor"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/1.2.7/tf.min.js"></script>
     <script src="bundle.js"></script>
     <script>
-      // TODO(cais): Find a way to not hard-code the path below and/or cover
-      //   it with a test.
-      const TENSOR_WIDGET_MODULE_PATH =
-        'org_tensorflow_tensorboard/tensorboard/components/tensor_widget/tensor-widget';
-
-      require([TENSOR_WIDGET_MODULE_PATH], function(tensorWidgetLib) {
-        document.getElementById('tensor-widget-version').textContent =
-          tensorWidgetLib.VERSION;
-      });
+      const DEMO_MODULE_PATH =
+        'org_tensorflow_tensorboard/tensorboard/components/tensor_widget/demo/demo';
+      require([DEMO_MODULE_PATH]);
     </script>
   </body>
 </html>

@@ -302,20 +302,14 @@ class CorePluginTest(tf.test.TestCase):
         multiplexer=self.multiplexer,
         window_title='title foo')
     self.logdir_based_plugin = core_plugin.CorePlugin(context)
-    app = application.TensorBoardWSGIApp(
-        self.logdir,
-        [self.logdir_based_plugin],
-        self.multiplexer,
-        0,
-        path_prefix='')
+    app = application.TensorBoardWSGI([self.logdir_based_plugin])
     self.logdir_based_server = werkzeug_test.Client(app, wrappers.BaseResponse)
 
   def _start_db_based_server(self):
-    db_module, db_connection_provider = application.get_database_info(
+    db_connection_provider = application.create_sqlite_connection_provider(
         self.db_uri)
     context = base_plugin.TBContext(
         assets_zip_provider=get_test_assets_zip_provider(),
-        db_module=db_module,
         db_connection_provider=db_connection_provider,
         db_uri=self.db_uri,
         window_title='title foo')

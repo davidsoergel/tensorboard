@@ -17,6 +17,7 @@ import {platformBrowser} from '@angular/platform-browser';
 import {AppModuleNgFactory} from './app.module.ngfactory';
 import 'zone.js/dist/zone.js'; // Angular runtime dep
 
+// TODO(stephanwlee): Create dev mode and conditionally enable this.
 enableProdMode();
 
 // Bootstrap needs to happen after body is ready but we cannot reliably

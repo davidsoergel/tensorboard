@@ -63,6 +63,10 @@ class CorePlugin(base_plugin.TBPlugin):
     self._multiplexer = context.multiplexer
     self._db_connection_provider = context.db_connection_provider
     self._assets_zip_provider = context.assets_zip_provider
+    if context.flags and context.flags.generic_data == 'true':
+      self._data_provider = context.data_provider
+    else:
+      self._data_provider = None
 
   def is_active(self):
     return True
@@ -149,7 +153,17 @@ class CorePlugin(base_plugin.TBPlugin):
     Sort order is by started time (aka first event time) with empty times sorted
     last, and then ties are broken by sorting on the run name.
     """
-    if self._db_connection_provider:
+    if self._data_provider:
+      experiment = request.args.get('experiment', '')
+      runs = sorted(
+          self._data_provider.list_runs(experiment_id=experiment),
+          key=lambda run: (
+              run.start_time if run.start_time is not None else float('inf'),
+              run.run_name,
+          )
+      )
+      run_names = [run.run_name for run in runs]
+    elif self._db_connection_provider:
       db = self._db_connection_provider()
       cursor = db.execute('''
         SELECT
@@ -341,15 +355,6 @@ temporary unless --db is also passed to specify a DB path to use.\
 ''')
 
     parser.add_argument(
-        '--db_import_use_op',
-        action='store_true',
-        help='''\
-[experimental] in combination with --db_import, if passed, use TensorFlow's
-import_event() op for importing event data, otherwise use TensorBoard's own
-sqlite ingestion logic.\
-''')
-
-    parser.add_argument(
         '--inspect',
         action='store_true',
         help='''\
@@ -480,6 +485,18 @@ heavier filesystem read traffic. If set to 0, this reverts to the older
 last-file-only polling strategy (akin to --reload_multifile=false).
 (default: %(default)s - intended to ensure an event file remains active if
 it receives new data at least once per hour)\
+''')
+
+    parser.add_argument(
+        '--generic_data',
+        metavar='TYPE',
+        type=str,
+        default='auto',
+        choices=['false', 'auto', 'true'],
+        help='''\
+[experimental] Whether to use generic data provider infrastructure. The
+"auto" option enables this only for dashboards that are considered
+stable under the new codepaths. (default: %(default)s)\
 ''')
 
     parser.add_argument(
