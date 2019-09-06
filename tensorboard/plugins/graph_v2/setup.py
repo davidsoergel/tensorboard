@@ -42,7 +42,7 @@ setuptools.setup(
     },
     entry_points={
         "tensorboard_plugins": [
-            "tensorboard_plugin_graph_v2 = tensorboard_plugin_graph_v2.plugin:GraphV2Plugin",
+            "tensorboard_plugin_graph_v2 = tensorboard_plugin_graph_v2.graph_v2_plugin:GraphV2Plugin",
         ],
     },
     install_requires=REQUIRED_PACKAGES,

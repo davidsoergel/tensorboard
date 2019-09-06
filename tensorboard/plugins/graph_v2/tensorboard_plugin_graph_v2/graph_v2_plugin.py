@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""The TensorBoard Graphs plugin."""
+"""The TensorBoard Graphs V2 plugin."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import json
+import os
 import six
+import werkzeug
 from werkzeug import wrappers
 
 from tensorboard.backend import http_util
@@ -32,9 +34,9 @@ from tensorboard.plugins.graph import graph_util
 from tensorboard.plugins.graph import keras_util
 from tensorboard.util import tb_logging
 
-logger = tb_logging.get_logger()
+from tensorboard_plugin_graph_v2 import metadata
 
-_PLUGIN_PREFIX_ROUTE = 'graphs'
+logger = tb_logging.get_logger()
 
 # The Summary API is implemented in TensorFlow because it uses TensorFlow internal APIs.
 # As a result, this SummaryMetadata is a bit unconventional and uses non-public
@@ -47,13 +49,13 @@ _PLUGIN_NAME_RUN_METADATA_WITH_GRAPH = 'graph_run_metadata_graph'
 _PLUGIN_NAME_KERAS_MODEL = 'graph_keras_model'
 
 
-class GraphsPlugin(base_plugin.TBPlugin):
-  """Graphs Plugin for TensorBoard."""
+class GraphV2Plugin(base_plugin.TBPlugin):
+  """Graph V2 Plugin for TensorBoard."""
 
-  plugin_name = _PLUGIN_PREFIX_ROUTE
+  plugin_name = metadata.PLUGIN_NAME
 
   def __init__(self, context):
-    """Instantiates GraphsPlugin via TensorBoard core.
+    """Instantiates GraphV2Plugin via TensorBoard core.
 
     Args:
       context: A base_plugin.TBContext instance.
@@ -61,21 +63,34 @@ class GraphsPlugin(base_plugin.TBPlugin):
     self._multiplexer = context.multiplexer
 
   def get_plugin_apps(self):
+    override_static_path = os.environ.get("TENSORBOARD_GRAPH_V2_PATH")
+    static_path = override_static_path or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'frontend/dist/frontend/')
+    cache_timeout = 1 if override_static_path else 43200
+    logger.info('%s frontend serving from %s with timeout %d' %
+        (GraphV2Plugin.plugin_name, static_path, cache_timeout))
+
+    static_route = '/data/plugin/graph_v2/static/'
+
     return {
         '/graph': self.graph_route,
         '/info': self.info_route,
         '/run_metadata': self.run_metadata_route,
+        "/static/*":
+            werkzeug.middleware.shared_data.SharedDataMiddleware(
+                werkzeug.exceptions.NotFound(),
+                {static_route: static_path},
+                cache_timeout=cache_timeout
+            ),
     }
 
   def is_active(self):
-    """The graphs plugin is active iff any run has a graph."""
-    return bool(self._multiplexer and self.info_impl())
+    return bool(self._multiplexer.PluginRunToTagToContent(metadata.PLUGIN_NAME))
 
   def frontend_metadata(self):
     return base_plugin.FrontendMetadata(
-        element_name='tf-graph-dashboard',
-        # TODO(@chihuahua): Reconcile this setting with Health Pills.
-        disable_reload=True,
+        es_module_path="/static/index.js",
     )
 
   def info_impl(self):
