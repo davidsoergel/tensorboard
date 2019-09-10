@@ -17,7 +17,7 @@
 
 import {Injectable} from '@angular/core';
 import {Actions, Effect, ofType} from '@ngrx/effects';
-import {of} from 'rxjs';
+import {of, from} from 'rxjs';
 import {catchError, switchMap, map} from 'rxjs/operators';
 
 import {
@@ -27,6 +27,7 @@ import {
   SetGraph,
 } from './actions';
 import {GraphUIState} from './types';
+import {fetchAndConstructHierarchicalGraph} from './legacy/loader';
 
 @Injectable()
 export class GraphV2Effects {
@@ -36,8 +37,13 @@ export class GraphV2Effects {
   loadGraphFromUrl$ = this.action$.pipe(
     ofType(LoadGraphRequest),
     switchMap((action) => {
-      return of({graphName: 'loaded'});
-    }), // stub
+      return from(
+        fetchAndConstructHierarchicalGraph(null, action.graphUrl, null)
+      );
+    }),
+    switchMap((x) => {
+      return of({graphName: 'loaded', graphAndHierarchy: x});
+    }),
     switchMap((graph: GraphUIState) => [SetGraph(graph), LoadGraphSuccess()]),
     catchError((error) => of(LoadGraphFailure(error)))
   );

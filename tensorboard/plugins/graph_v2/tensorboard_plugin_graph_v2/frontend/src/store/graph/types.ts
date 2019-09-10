@@ -15,9 +15,12 @@
  * =============================================================================
  */
 
+import {GraphAndHierarchy} from './legacy/loader';
+
 export interface GraphUIState {
   // TODO(soergel): this is a stub
   graphName: string;
+  graphAndHierarchy: GraphAndHierarchy; // try using the legacy representation for now
   // graph: ...
   // layout: ...
 }
@@ -25,4 +28,5 @@ export interface GraphUIState {
 /** Default values for the CanvasWithLayout. */
 export const INITIAL_GRAPH_UI_STATE: GraphUIState = {
   graphName: 'Untitled',
+  graphAndHierarchy: null,
 };
