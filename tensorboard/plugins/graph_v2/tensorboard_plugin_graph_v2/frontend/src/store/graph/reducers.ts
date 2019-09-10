@@ -15,22 +15,18 @@
  * =============================================================================
  */
 
-import {Record} from 'immutable';
-import {GraphUIState} from './graph/types';
+import {createReducer, on} from '@ngrx/store';
+import {GraphUIState} from './types';
+import {SetGraphName} from './actions';
 
-/**
- * Definition of the structure of the plugin state.
- */
-export interface GraphV2PluginStateDef {
-  // The current graph.
-  graph: GraphUIState;
+export const graphReducer = createReducer(
+  new GraphUIState(),
+  on(SetGraphName, (state, {graphName}) => applySetGraphName(state, graphName))
+);
+
+export function applySetGraphName(
+  state: GraphUIState,
+  graphName: string
+): GraphUIState {
+  return state.set('graphName', graphName);
 }
-
-const INITIAL_GRAPH_V2_PLUGIN_STATE: GraphV2PluginStateDef = {
-  graph: new GraphUIState(),
-};
-
-/**
- * Top level state of the application.
- */
-export class GraphV2PluginState extends Record(INITIAL_GRAPH_V2_PLUGIN_STATE) {}

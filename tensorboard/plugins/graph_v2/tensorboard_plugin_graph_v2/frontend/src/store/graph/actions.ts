@@ -16,7 +16,7 @@
  */
 
 import {createAction} from '@ngrx/store';
-import {GraphWithLayout} from './types';
+import {GraphUIState} from './types';
 
 /** Represents the intent to clear the graph. */
 export const ClearGraph = createAction('[Graph] Clear Graph');
@@ -24,7 +24,7 @@ export const ClearGraph = createAction('[Graph] Clear Graph');
 /** Represents the intent to reset the graph to the provided value. */
 export const SetGraph = createAction(
   '[Graph] Set Graph',
-  (graph: GraphWithLayout) => ({
+  (graph: GraphUIState) => ({
     graph,
   })
 );
