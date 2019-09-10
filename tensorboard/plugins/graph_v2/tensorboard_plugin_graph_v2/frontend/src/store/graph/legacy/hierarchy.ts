@@ -1027,7 +1027,7 @@ function detectSeriesUsingNumericSuffixes(
   graphOptions: graphlib.GraphOptions
 ): {[seriesName: string]: SeriesNode} {
   let seriesDict: {[seriesName: string]: SeriesNode} = {};
-  Object.entries(clusters).forEach(([clusterId, members]) => {
+  Object.entries(clusters || {}).forEach(([clusterId, members]) => {
     if (members.length <= 1) {
       return;
     } // isolated clusters can't make series
@@ -1131,7 +1131,7 @@ function detectSeriesAnywhereInNodeName(
   graphOptions: graphlib.GraphOptions
 ): {[seriesName: string]: SeriesNode} {
   let seriesDict: {[seriesName: string]: SeriesNode} = {};
-  Object.entries(clusters).forEach(([clusterId, members]) => {
+  Object.entries(clusters || {}).forEach(([clusterId, members]) => {
     if (members.length <= 1) {
       return;
     } // isolated clusters can't make series

@@ -64,7 +64,7 @@ export function fetchAndConstructHierarchicalGraph(
       }
     )
     .then(async (graph) => {
-      // Populate compatibile field of OpNode based on whitelist
+      // Populate compatible field of OpNode based on whitelist
       op.checkOpsForCompatibility(graph, compatibilityProvider);
       const graphHierarchy = await hierarchy.buildHierarchy(
         graph,

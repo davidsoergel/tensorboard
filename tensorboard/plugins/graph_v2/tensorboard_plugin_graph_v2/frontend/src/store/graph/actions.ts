@@ -17,15 +17,23 @@
 
 import {createAction} from '@ngrx/store';
 import {GraphUIState} from './types';
+import {GraphAndHierarchy} from './legacy/loader';
 
 /** Represents the intent to clear the graph. */
 export const ClearGraph = createAction('[Graph] Clear Graph');
 
 /** Represents the intent to reset the graph to the provided value. */
-export const SetGraph = createAction(
-  '[Graph] Set Graph',
+export const SetGraphUIState = createAction(
+  '[Graph] Set GraphUIState',
   (graph: GraphUIState) => ({
     graph,
+  })
+);
+
+export const SetGraphAndHierarchy = createAction(
+  '[Graph] Set GraphAndHierarchy',
+  (graphAndHierarchy: GraphAndHierarchy) => ({
+    graphAndHierarchy,
   })
 );
 

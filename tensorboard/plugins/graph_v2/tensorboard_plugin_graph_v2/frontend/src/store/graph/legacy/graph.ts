@@ -940,6 +940,9 @@ function extractXlaCluster(
  */
 function normalizeInputs(inputs: string[]): NormalizedInput[] {
   let normalizedInputs: NormalizedInput[] = [];
+  if (inputs == null) {
+    inputs = [];
+  }
   inputs.forEach((inputName) => {
     let isControlDependency = inputName[0] === '^';
     if (isControlDependency) {

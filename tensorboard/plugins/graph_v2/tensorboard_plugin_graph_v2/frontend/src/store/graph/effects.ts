@@ -24,10 +24,14 @@ import {
   LoadGraphFailure,
   LoadGraphRequest,
   LoadGraphSuccess,
-  SetGraph,
+  SetGraphName,
+  SetGraphAndHierarchy,
 } from './actions';
 import {GraphUIState} from './types';
-import {fetchAndConstructHierarchicalGraph} from './legacy/loader';
+import {
+  fetchAndConstructHierarchicalGraph,
+  GraphAndHierarchy,
+} from './legacy/loader';
 
 @Injectable()
 export class GraphV2Effects {
@@ -37,14 +41,41 @@ export class GraphV2Effects {
   loadGraphFromUrl$ = this.action$.pipe(
     ofType(LoadGraphRequest),
     switchMap((action) => {
+      console.log(`Going to fetch ${action.graphUrl}`);
       return from(
-        fetchAndConstructHierarchicalGraph(null, action.graphUrl, null)
+        fetchAndConstructHierarchicalGraph(getTracker(), action.graphUrl, null)
       );
     }),
+    /*
     switchMap((x) => {
+      console.log(`Fetched`);
+      console.log(x);
       return of({graphName: 'loaded', graphAndHierarchy: x});
     }),
-    switchMap((graph: GraphUIState) => [SetGraph(graph), LoadGraphSuccess()]),
-    catchError((error) => of(LoadGraphFailure(error)))
+    */
+    switchMap((graph: GraphAndHierarchy) => [
+      SetGraphName('loaded'),
+      SetGraphAndHierarchy(graph),
+      LoadGraphSuccess(),
+    ]),
+    catchError((error) => {
+      console.log(error);
+      return of(LoadGraphFailure(error));
+    })
   );
+}
+
+export function getTracker() {
+  return {
+    setMessage: (msg) => {
+      console.log(msg);
+    },
+    updateProgress: (value) => {
+      console.log(value);
+    },
+    reportError: (msg: string, err) => {
+      console.log(msg);
+      console.log(err);
+    },
+  };
 }

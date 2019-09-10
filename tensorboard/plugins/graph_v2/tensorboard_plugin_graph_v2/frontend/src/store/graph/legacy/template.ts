@@ -60,7 +60,7 @@ export function detect(h, verifyTemplate): {[templateId: string]: string[]} {
 
   // For each metanode, compare its subgraph (starting from shallower groups)
   // and assign template id.
-  const templates = groupTemplateAndAssignId(nnGroups, verifyTemplate);
+  const templates = groupTemplateAndAssignId(nnGroups, verifyTemplate) || {};
 
   // Sort the templates by minimum level in the graph at which they appear,
   // as this leads to optimal setting of the colors of each template for
@@ -77,14 +77,15 @@ export function detect(h, verifyTemplate): {[templateId: string]: string[]} {
  * @return Unique string for a metanode based on depth, |V|, |E| and
  * op type histogram.
  */
-function getSignature(metanode) {
+function getSignature(metanode: any) {
+  // TODO(soergel) GroupNode | OpNode) {
   const props = `depth=${metanode.depth} |V|=${
     metanode.metagraph.nodes().length
   } |E|=${metanode.metagraph.edges().length}`;
 
   // optype1=count1,optype2=count2
-  let ops = metanode.opHistogram
-    .map((count, op) => {
+  let ops = Object.entries(metanode.opHistogram)
+    .map((op, count) => {
       return op + '=' + count;
     })
     .join(',');
