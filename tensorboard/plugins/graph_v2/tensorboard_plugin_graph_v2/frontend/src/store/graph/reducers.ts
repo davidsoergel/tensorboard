@@ -16,11 +16,11 @@
  */
 
 import {createReducer, on} from '@ngrx/store';
-import {GraphUIState} from './types';
+import {GraphUIState, INITIAL_GRAPH_UI_STATE} from './types';
 import {SetGraphName} from './actions';
 
 export const graphReducer = createReducer(
-  new GraphUIState(),
+  INITIAL_GRAPH_UI_STATE,
   on(SetGraphName, (state, {graphName}) => applySetGraphName(state, graphName))
 );
 
@@ -28,5 +28,5 @@ export function applySetGraphName(
   state: GraphUIState,
   graphName: string
 ): GraphUIState {
-  return state.set('graphName', graphName);
+  return {...state, graphName};
 }
