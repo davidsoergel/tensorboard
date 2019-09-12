@@ -13,9 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-import {ProgressTracker, NodeStats} from './common';
-
-import * as util from './util';
+import { NodeStats, ProgressTracker } from './common';
 
 /**
  * @fileoverview Utility functions for the tensorflow graph visualizer.
@@ -31,19 +29,19 @@ const ASYNC_TASK_DELAY = 20;
  * Measure and log a synchronous task.
  */
 export function time<T>(msg: string, task: () => T) {
-  let start = Date.now();
-  let result = task();
+  const start = Date.now();
+  const result = task();
   /* tslint:disable */
   console.log(msg, ':', Date.now() - start, 'ms');
   /* tslint:enable */
   return result;
 }
 
-export type Tracker = {
+export interface Tracker {
   setMessage: (msg: string) => void;
   updateProgress: (value: number) => void;
   reportError: (msg: string, error: Error) => void;
-};
+}
 
 /**
  * Creates a tracker that sets the progress property of the
@@ -52,27 +50,28 @@ export type Tracker = {
  * property is an object with a numerical 'value' property and a
  * string 'msg' property.
  */
+// tslint:disable-next-line: no-any
 export function getTracker(polymerComponent: any): Tracker {
   return {
-    setMessage: function(msg) {
+    setMessage: msg => {
       polymerComponent.set('progress', {
         value: polymerComponent.progress.value,
-        msg: msg,
+        msg,
       });
     },
-    updateProgress: function(value) {
+    updateProgress: value => {
       polymerComponent.set('progress', {
         value: polymerComponent.progress.value + value,
         msg: polymerComponent.progress.msg,
       });
     },
-    reportError: function(msg: string, err) {
+    reportError: (msg: string, err) => {
       // Log the stack trace in the console.
       console.error(err.stack);
       // And send a user-friendly message to the UI.
       polymerComponent.set('progress', {
         value: polymerComponent.progress.value,
-        msg: msg,
+        msg,
         error: true,
       });
     },
@@ -92,12 +91,12 @@ export function getSubtaskTracker(
   subtaskMsg: string
 ): ProgressTracker {
   return {
-    setMessage: function(progressMsg) {
+    setMessage: progressMsg => {
       // The parent should show a concatenation of its message along with
       // its subtask tracker message.
       parentTracker.setMessage(subtaskMsg + ': ' + progressMsg);
     },
-    updateProgress: function(incrementValue) {
+    updateProgress: incrementValue => {
       // Update the parent progress relative to the child progress.
       // For example, if the sub-task progresses by 30%, and the impact on the
       // total progress is 50%, then the task progresses by 30% * 50% = 15%.
@@ -105,7 +104,7 @@ export function getSubtaskTracker(
         (incrementValue * impactOnTotalProgress) / 100
       );
     },
-    reportError: function(msg: string, err: Error) {
+    reportError: (msg: string, err: Error) => {
       // The parent should show a concatenation of its message along with
       // its subtask error message.
       parentTracker.reportError(subtaskMsg + ': ' + msg, err);
@@ -128,7 +127,7 @@ export function runTask<T>(
   // Run the expensive task with a delay that gives enough time for the
   // UI to update.
   try {
-    let result = util.time(msg, task);
+    const result = time(msg, task);
     // Update the progress value.
     tracker.updateProgress(incProgressValue);
     // Return the result to be used by other tasks.
@@ -137,6 +136,7 @@ export function runTask<T>(
     // Errors that happen inside asynchronous tasks are
     // reported to the tracker using a user-friendly message.
     tracker.reportError('Failed ' + msg, e);
+    throw e;
   }
 }
 
@@ -154,9 +154,9 @@ export function runAsyncTask<T>(
     tracker.setMessage(msg);
     // Run the expensive task with a delay that gives enough time for the
     // UI to update.
-    setTimeout(function() {
+    setTimeout(() => {
       try {
-        let result = util.time(msg, task);
+        const result = time(msg, task);
         // Update the progress value.
         tracker.updateProgress(incProgressValue);
         // Return the result to be used by other tasks.
@@ -182,7 +182,7 @@ export function runAsyncPromiseTask<T>(
   tracker: ProgressTracker
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    let handleError = function(e) {
+    const handleError = (e: Error) => {
       // Errors that happen inside asynchronous tasks are
       // reported to the tracker using a user-friendly message.
       tracker.reportError('Failed ' + msg, e);
@@ -193,11 +193,11 @@ export function runAsyncPromiseTask<T>(
     tracker.setMessage(msg);
     // Run the expensive task with a delay that gives enough time for the
     // UI to update.
-    setTimeout(function() {
+    setTimeout(() => {
       try {
-        let start = Date.now();
+        const start = Date.now();
         task()
-          .then(function(value) {
+          .then(value => {
             /* tslint:disable */
             console.log(msg, ':', Date.now() - start, 'ms');
             // Update the progress value.
@@ -231,24 +231,24 @@ type Units = ReadonlyArray<Unit>;
 // For unit conversion.
 export const MEMORY_UNITS: Units = [
   // Atomic unit.
-  {symbol: 'B'},
+  { symbol: 'B' },
   // numUnits specifies how many previous units this unit contains.
-  {symbol: 'KB', numUnits: 1024},
-  {symbol: 'MB', numUnits: 1024},
-  {symbol: 'GB', numUnits: 1024},
-  {symbol: 'TB', numUnits: 1024},
-  {symbol: 'PB', numUnits: 1024},
+  { symbol: 'KB', numUnits: 1024 },
+  { symbol: 'MB', numUnits: 1024 },
+  { symbol: 'GB', numUnits: 1024 },
+  { symbol: 'TB', numUnits: 1024 },
+  { symbol: 'PB', numUnits: 1024 },
 ];
 
 export const TIME_UNITS: Units = [
   // Atomic unit. Finest granularity in TensorFlow stat collection.
-  {symbol: 'µs'},
+  { symbol: 'µs' },
   // numUnits specifies how many previous units this unit contains.
-  {symbol: 'ms', numUnits: 1000},
-  {symbol: 's', numUnits: 1000},
-  {symbol: 'min', numUnits: 60},
-  {symbol: 'hr', numUnits: 60},
-  {symbol: 'days', numUnits: 24},
+  { symbol: 'ms', numUnits: 1000 },
+  { symbol: 's', numUnits: 1000 },
+  { symbol: 'min', numUnits: 60 },
+  { symbol: 'hr', numUnits: 60 },
+  { symbol: 'days', numUnits: 24 },
 ];
 
 /**
@@ -259,7 +259,7 @@ export function convertUnitsToHumanReadable(
   value: number,
   units: Units,
   unitIndex: number = 0
-) {
+): string {
   if (unitIndex + 1 < units.length && value >= units[unitIndex + 1].numUnits) {
     return convertUnitsToHumanReadable(
       value / units[unitIndex + 1].numUnits,
@@ -300,10 +300,10 @@ export function removeCommonPrefix(strings: string[]) {
   let index = 0;
   let largestIndex = 0;
   // Find the shortest name across all strings.
-  let minLength = Math.min(...strings.map((str) => str.length));
+  let minLength = Math.min(...strings.map(str => str.length));
   while (true) {
     index++;
-    let prefixes = strings.map((str) => str.substring(0, index));
+    let prefixes = strings.map(str => str.substring(0, index));
     let allTheSame = prefixes.every((prefix, i) => {
       return i === 0 ? true : prefix === prefixes[i - 1];
     });
@@ -318,7 +318,7 @@ export function removeCommonPrefix(strings: string[]) {
       break;
     }
   }
-  return strings.map((str) => str.substring(largestIndex));
+  return strings.map(str => str.substring(largestIndex));
 }
 
 /**

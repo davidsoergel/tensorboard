@@ -13,33 +13,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+// tslint:disable-next-line: no-reference
 ///<reference path="./graphlib.d.ts" />
 import * as graphlib from 'graphlib';
-import * as proto from './proto';
-import * as util from './util';
-import * as template from './template';
+import { NodeStats, ProgressTracker } from './common';
 import {
-  ROOT_NAME,
+  createGraph,
+  createMetaedge,
+  createMetanode,
+  createSeriesNode,
   FUNCTION_LIBRARY_NODE_PREFIX,
   getHierarchicalPath,
+  getSeriesNodeName,
+  GraphType,
+  GroupNode,
+  Metaedge,
+  MetaedgeImpl,
+  Metanode,
+  Node,
   NodeType,
+  OpNode,
+  ROOT_NAME,
+  SeriesGroupingType,
   SeriesNode,
   SlimGraph,
-  SeriesGroupingType,
-  Node,
-  Metaedge,
-  Metanode,
-  GroupNode,
-  OpNode,
-  createMetanode,
-  createMetaedge,
-  createGraph,
-  GraphType,
-  getSeriesNodeName,
-  createSeriesNode,
-  MetaedgeImpl,
 } from './graph';
-import {ProgressTracker, NodeStats} from './common';
+import * as proto from './proto';
+import * as template from './template';
+import * as util from './util';
 
 /**
  * Package for the Graph Hierarchy for TensorFlow graph.
@@ -67,8 +68,8 @@ export interface LibraryFunctionData {
 
 export interface Hierarchy {
   root: Metanode;
-  libraryFunctions: {[key: string]: LibraryFunctionData};
-  templates: {[templateId: string]: string[]};
+  libraryFunctions: { [key: string]: LibraryFunctionData };
+  templates: { [templateId: string]: string[] };
   /** List of all device names */
   devices: string[];
   /** List of all XLA cluster names */
@@ -78,7 +79,7 @@ export interface Hierarchy {
   /** The maximum size across all meta edges. Used for scaling thickness. */
   maxMetaEdgeSize: number;
   graphOptions: graphlib.GraphOptions;
-  getNodeMap(): {[nodeName: string]: GroupNode | OpNode};
+  getNodeMap(): { [nodeName: string]: GroupNode | OpNode };
   node(name: string): GroupNode | OpNode;
   setNode(name: string, node: GroupNode | OpNode): void;
   getBridgegraph(
@@ -86,7 +87,7 @@ export interface Hierarchy {
   ): graphlib.Graph<GroupNode | OpNode, Metaedge>;
   getPredecessors(nodeName: string): Edges;
   getSuccessors(nodeName: string): Edges;
-  getTopologicalOrdering(nodeName: string): {[childName: string]: number};
+  getTopologicalOrdering(nodeName: string): { [childName: string]: number };
   // getTemplateIndex(): (string) => number;
 }
 
@@ -95,14 +96,14 @@ export interface Hierarchy {
  */
 class HierarchyImpl implements Hierarchy {
   root: Metanode;
-  libraryFunctions: {[key: string]: LibraryFunctionData};
-  templates: {[templateId: string]: string[]};
-  private index: {[nodeName: string]: GroupNode | OpNode};
+  libraryFunctions: { [key: string]: LibraryFunctionData };
+  templates: { [templateId: string]: string[] };
+  private index: { [nodeName: string]: GroupNode | OpNode };
   devices: string[];
   xlaClusters: string[];
   hasShapeInfo = false;
   maxMetaEdgeSize = 1;
-  orderings: {[nodeName: string]: {[childName: string]: number}};
+  orderings: { [nodeName: string]: { [childName: string]: number } };
   graphOptions: graphlib.GraphOptions;
 
   /**
@@ -127,7 +128,7 @@ class HierarchyImpl implements Hierarchy {
     this.orderings = {};
   }
 
-  getNodeMap(): {[nodeName: string]: GroupNode | OpNode} {
+  getNodeMap(): { [nodeName: string]: GroupNode | OpNode } {
     return this.index;
   }
 
@@ -148,18 +149,18 @@ class HierarchyImpl implements Hierarchy {
   getBridgegraph(
     nodeName: string
   ): graphlib.Graph<GroupNode | OpNode, Metaedge> {
-    let node = this.index[nodeName];
+    const node = this.index[nodeName];
     if (!node) {
       throw Error('Could not find node in hierarchy: ' + nodeName);
     }
     if (!('metagraph' in node)) {
       return null;
     }
-    let groupNode = <GroupNode>node;
+    const groupNode = node;
     if (groupNode.bridgegraph) {
       return groupNode.bridgegraph;
     }
-    let bridgegraph = (groupNode.bridgegraph = createGraph<
+    const bridgegraph = (groupNode.bridgegraph = createGraph<
       GroupNode | OpNode,
       Metaedge
     >('BRIDGEGRAPH', GraphType.BRIDGE, this.graphOptions));
@@ -167,40 +168,40 @@ class HierarchyImpl implements Hierarchy {
       return bridgegraph;
     }
 
-    let parentNode = <GroupNode>node.parentNode;
-    let parentMetagraph = parentNode.metagraph;
-    let parentBridgegraph = this.getBridgegraph(parentNode.name);
+    const parentNode = node.parentNode as GroupNode;
+    const parentMetagraph = parentNode.metagraph;
+    const parentBridgegraph = this.getBridgegraph(parentNode.name);
 
     // For each of the parent node's two Metaedge containing graphs, process
     // each Metaedge involving this node.
-    [parentMetagraph, parentBridgegraph].forEach((parentGraph) => {
+    [parentMetagraph, parentBridgegraph].forEach(parentGraph => {
       parentGraph
         .edges()
-        .filter((e) => e.v === nodeName || e.w === nodeName)
-        .forEach((parentEdgeObj) => {
-          let inbound = parentEdgeObj.w === nodeName;
-          let parentMetaedge = parentGraph.edge(parentEdgeObj);
+        .filter(e => e.v === nodeName || e.w === nodeName)
+        .forEach(parentEdgeObj => {
+          const inbound = parentEdgeObj.w === nodeName;
+          const parentMetaedge = parentGraph.edge(parentEdgeObj);
 
           // The parent's Metaedge represents some number of underlying
           // BaseEdges from the original full graph. For each of those, we need
           // to determine which immediate child is involved and make sure
           // there's a Metaedge in the bridgegraph that covers it.
-          parentMetaedge.baseEdgeList.forEach((baseEdge) => {
+          parentMetaedge.baseEdgeList.forEach(baseEdge => {
             // Based on the direction, figure out which is the descendant node
             // and which is the 'other' node (sibling of parent or ancestor).
-            let [descendantName, otherName] = inbound
+            const [descendantName, otherName] = inbound
               ? [baseEdge.w, parentEdgeObj.v]
               : [baseEdge.v, parentEdgeObj.w];
 
             // Determine the immediate child containing this descendant node.
-            let childName = this.getChildName(nodeName, descendantName);
+            const childName = this.getChildName(nodeName, descendantName);
 
             // Look for an existing Metaedge in the bridgegraph (or create a
             // new one) that covers the relationship between child and other.
-            let bridgeEdgeObj = <graphlib.EdgeObject>{
+            const bridgeEdgeObj = {
               v: inbound ? otherName : childName,
               w: inbound ? childName : otherName,
-            };
+            } as graphlib.EdgeObject;
             let bridgeMetaedge = bridgegraph.edge(bridgeEdgeObj);
             if (!bridgeMetaedge) {
               bridgeMetaedge = createMetaedge(bridgeEdgeObj.v, bridgeEdgeObj.w);
@@ -243,20 +244,20 @@ class HierarchyImpl implements Hierarchy {
 
   /** Given the name of a node, return its incoming metaedges. */
   getPredecessors(nodeName: string): Edges {
-    let node = this.index[nodeName];
+    const node = this.index[nodeName];
     if (!node) {
       throw Error('Could not find node with name: ' + nodeName);
     }
 
-    let predecessors = this.getOneWayEdges(node, true);
+    const predecessors = this.getOneWayEdges(node, true);
     // Add embedded predecessors, such as constants.
     if (!node.isGroupNode) {
-      (<OpNode>node).inEmbeddings.forEach((embeddedNode) => {
-        (<OpNode>node).inputs.forEach((input) => {
+      (node as OpNode).inEmbeddings.forEach(embeddedNode => {
+        (node as OpNode).inputs.forEach(input => {
           if (input.name === embeddedNode.name) {
             // Make a new metaedge holding the edge between the
             // node and the in-embedding.
-            let metaedge = new MetaedgeImpl(embeddedNode.name, nodeName);
+            const metaedge = new MetaedgeImpl(embeddedNode.name, nodeName);
             metaedge.addBaseEdge(
               {
                 isControlDependency: input.isControlDependency,
@@ -282,21 +283,21 @@ class HierarchyImpl implements Hierarchy {
    * for an in-depth example.
    */
   getSuccessors(nodeName: string): Edges {
-    let node = this.index[nodeName];
+    const node = this.index[nodeName];
     if (!node) {
       throw Error('Could not find node with name: ' + nodeName);
     }
 
-    let successors = this.getOneWayEdges(node, false);
+    const successors = this.getOneWayEdges(node, false);
 
     // Add embedded successors, such as summaries.
     if (!node.isGroupNode) {
-      (<OpNode>node).outEmbeddings.forEach((embeddedNode) => {
-        embeddedNode.inputs.forEach((input) => {
+      (node as OpNode).outEmbeddings.forEach(embeddedNode => {
+        embeddedNode.inputs.forEach(input => {
           if (input.name === nodeName) {
             // Make a new metaedge holding the edge between the
             // node and the out-embedding.
-            let metaedge = new MetaedgeImpl(nodeName, embeddedNode.name);
+            const metaedge = new MetaedgeImpl(nodeName, embeddedNode.name);
             metaedge.addBaseEdge(
               {
                 isControlDependency: input.isControlDependency,
@@ -317,14 +318,14 @@ class HierarchyImpl implements Hierarchy {
 
   /** Helper method for getPredecessors and getSuccessors */
   getOneWayEdges(node: GroupNode | OpNode, inEdges: boolean) {
-    let edges: Edges = {control: [], regular: []};
+    const edges: Edges = { control: [], regular: [] };
     // A node with no parent cannot have any edges.
     if (!node.parentNode || !node.parentNode.isGroupNode) {
       return edges;
     }
-    let parentNode = <GroupNode>node.parentNode;
-    let metagraph = parentNode.metagraph;
-    let bridgegraph = this.getBridgegraph(parentNode.name);
+    const parentNode = node.parentNode as GroupNode;
+    const metagraph = parentNode.metagraph;
+    const bridgegraph = this.getBridgegraph(parentNode.name);
     findEdgeTargetsInGraph(metagraph, node, inEdges, edges);
     findEdgeTargetsInGraph(bridgegraph, node, inEdges, edges);
     return edges;
@@ -356,8 +357,8 @@ class HierarchyImpl implements Hierarchy {
    * If there is no node with the specified name, an error is thrown. If the
    * node with the specified name is not a group node, null is returned.
    */
-  getTopologicalOrdering(nodeName: string): {[childName: string]: number} {
-    let node = this.index[nodeName];
+  getTopologicalOrdering(nodeName: string): { [childName: string]: number } {
+    const node = this.index[nodeName];
     if (!node) {
       throw Error('Could not find node with name: ' + nodeName);
     }
@@ -369,12 +370,12 @@ class HierarchyImpl implements Hierarchy {
     }
 
     // Mapping of a child node names to lists of their successors.
-    let successors: {[childName: string]: string[]} = {};
+    const successors: { [childName: string]: string[] } = {};
 
     // Set of node names which have appeared as a destination.
-    let destinations: {[childName: string]: boolean} = {};
+    const destinations: { [childName: string]: boolean } = {};
 
-    let metagraph = (<GroupNode>node).metagraph;
+    const metagraph = (node as GroupNode).metagraph;
     metagraph.edges().forEach((e: graphlib.EdgeObject) => {
       if (!metagraph.edge(e).numRegularEdges) {
         return; // Skip control edges.
@@ -391,17 +392,17 @@ class HierarchyImpl implements Hierarchy {
     // Seed the queue with true sources (those that are not destinations).
     const successorKeys = Object.keys(successors);
     const destinationKeys = Object.keys(destinations);
-    let queue: string[] = successorKeys.filter(
-      (item) => destinationKeys.indexOf(item) < 0
+    const queue: string[] = successorKeys.filter(
+      item => destinationKeys.indexOf(item) < 0
     );
 
     // Produce an ordering by traversing the graph breadth first.
-    let ordering = (this.orderings[nodeName] = {});
+    const ordering = (this.orderings[nodeName] = {});
     let index = 0;
     while (queue.length) {
-      let childName = queue.shift();
+      const childName = queue.shift();
       ordering[childName] = index++;
-      successors[childName].forEach((succName) => queue.push(succName));
+      successors[childName].forEach(succName => queue.push(succName));
       delete successors[childName]; // Prevent cycles from infinite looping.
     }
     return ordering;
@@ -441,10 +442,10 @@ function findEdgeTargetsInGraph(
   inbound: boolean,
   targets: Edges
 ): void {
-  let edges = inbound ? graph.inEdges(node.name) : graph.outEdges(node.name);
-  edges.forEach((e) => {
-    let metaedge = graph.edge(e);
-    let targetList = metaedge.numRegularEdges
+  const edges = inbound ? graph.inEdges(node.name) : graph.outEdges(node.name);
+  edges.forEach(e => {
+    const metaedge = graph.edge(e);
+    const targetList = metaedge.numRegularEdges
       ? targets.regular
       : targets.control;
     targetList.push(metaedge);
@@ -454,7 +455,7 @@ function findEdgeTargetsInGraph(
 export interface HierarchyParams {
   verifyTemplate: boolean;
   seriesNodeMinSize: number;
-  seriesMap: {[name: string]: SeriesGroupingType};
+  seriesMap: { [name: string]: SeriesGroupingType };
   // This string is supplied to dagre as the 'rankdir' property for laying out
   // the graph. TB, BT, LR, or RL. The default is 'BT' (bottom to top).
   rankDirection: string;
@@ -464,7 +465,7 @@ export interface HierarchyParams {
   useGeneralizedSeriesPatterns: boolean;
 }
 
-export const DefaultHierarchyParams = {
+export const DEFAULT_HIERARCHY_PARAMS = {
   verifyTemplate: true,
   seriesNodeMinSize: 5,
   seriesMap: {},
@@ -481,16 +482,16 @@ export function buildHierarchy(
   params: HierarchyParams,
   tracker: ProgressTracker
 ): Promise<Hierarchy> {
-  let h = new HierarchyImpl({rankdir: params.rankDirection});
-  let seriesNames: {[name: string]: string} = {};
+  const h = new HierarchyImpl({ rankdir: params.rankDirection });
+  const seriesNames: { [name: string]: string } = {};
   return util
     .runAsyncTask(
       'Adding nodes',
       20,
       () => {
         // Get all the possible device and XLA cluster names.
-        let deviceNames = {};
-        let xlaClusterNames = {};
+        const deviceNames = {};
+        const xlaClusterNames = {};
         Object.entries(graph.nodes).forEach(([nodeName, node]) => {
           if (node.device) {
             deviceNames[node.device] = true;
@@ -554,10 +555,10 @@ export function buildHierarchy(
 
 export function joinAndAggregateStats(h: Hierarchy, stats: proto.StepStats) {
   // Get all the possible device and XLA cluster names.
-  let deviceNames = {};
-  let xlaClusterNames = {};
-  h.root.leaves().forEach((nodeName) => {
-    let leaf = <OpNode>h.node(nodeName);
+  const deviceNames = {};
+  const xlaClusterNames = {};
+  h.root.leaves().forEach(nodeName => {
+    const leaf = h.node(nodeName) as OpNode;
     if (leaf.device != null) {
       deviceNames[leaf.device] = true;
     }
@@ -572,21 +573,21 @@ export function joinAndAggregateStats(h: Hierarchy, stats: proto.StepStats) {
   Object.entries(h.getNodeMap()).forEach(([nodeName, node]) => {
     if (node.isGroupNode) {
       node.stats = new NodeStats(null);
-      (<GroupNode>node).deviceHistogram = {};
+      (node as GroupNode).deviceHistogram = {};
     }
   });
 
   // Bubble-up the stats and device distribution from leaves to parents.
-  h.root.leaves().forEach((nodeName) => {
-    let leaf = <OpNode>h.node(nodeName);
-    let node = <GroupNode | OpNode>leaf;
+  h.root.leaves().forEach(nodeName => {
+    const leaf = h.node(nodeName) as OpNode;
+    let node = leaf as GroupNode | OpNode;
     while (node.parentNode != null) {
       if (leaf.device != null) {
-        let deviceHistogram = (<GroupNode>node.parentNode).deviceHistogram;
+        const deviceHistogram = (node.parentNode as GroupNode).deviceHistogram;
         deviceHistogram[leaf.device] = (deviceHistogram[leaf.device] || 0) + 1;
       }
       if (leaf.xlaCluster != null) {
-        let xlaClusterHistogram = (<GroupNode>node.parentNode)
+        const xlaClusterHistogram = (node.parentNode as GroupNode)
           .xlaClusterHistogram;
         xlaClusterHistogram[leaf.xlaCluster] =
           (xlaClusterHistogram[leaf.xlaCluster] || 0) + 1;
@@ -594,7 +595,7 @@ export function joinAndAggregateStats(h: Hierarchy, stats: proto.StepStats) {
       if (leaf.stats != null) {
         node.parentNode.stats.combine(leaf.stats);
       }
-      node = <GroupNode>node.parentNode;
+      node = node.parentNode as GroupNode;
     }
   });
 }
@@ -603,12 +604,12 @@ export function getIncompatibleOps(
   hierarchy: Hierarchy,
   hierarchyParams: HierarchyParams
 ) {
-  let nodes: (GroupNode | OpNode)[] = [];
-  let addedSeriesNodes: {[seriesName: string]: SeriesNode} = {};
-  hierarchy.root.leaves().forEach((leaf) => {
-    let node = hierarchy.node(leaf);
-    if (node.type == NodeType.OP) {
-      let opNode = <OpNode>node;
+  const nodes: Array<GroupNode | OpNode> = [];
+  const addedSeriesNodes: { [seriesName: string]: SeriesNode } = {};
+  hierarchy.root.leaves().forEach(leaf => {
+    const node = hierarchy.node(leaf);
+    if (node.type === NodeType.OP) {
+      const opNode = node as OpNode;
 
       if (!opNode.compatible) {
         if (opNode.owningSeries) {
@@ -621,7 +622,7 @@ export function getIncompatibleOps(
             nodes.push(opNode);
           } else {
             if (!addedSeriesNodes[opNode.owningSeries]) {
-              let series = <SeriesNode>hierarchy.node(opNode.owningSeries);
+              const series = hierarchy.node(opNode.owningSeries) as SeriesNode;
               if (series) {
                 addedSeriesNodes[opNode.owningSeries] = series;
                 nodes.push(series);
@@ -634,13 +635,13 @@ export function getIncompatibleOps(
       }
 
       // Check the embeddings for invalid operations
-      opNode.inEmbeddings.forEach((inNode) => {
+      opNode.inEmbeddings.forEach(inNode => {
         if (!inNode.compatible) {
           nodes.push(inNode);
         }
       });
 
-      opNode.outEmbeddings.forEach((outNode) => {
+      opNode.outEmbeddings.forEach(outNode => {
         if (!outNode.compatible) {
           nodes.push(outNode);
         }
@@ -661,7 +662,7 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
   const opToNode = {};
 
   Object.entries(graph.nodes).forEach(([nodeName, node]) => {
-    let path = getHierarchicalPath(node.name);
+    const path = getHierarchicalPath(node.name);
     let parent: Metanode = h.root;
 
     parent.depth = Math.max(path.length, parent.depth);
@@ -698,7 +699,7 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
       }
 
       // Increment capability counts for in and out embeddings
-      node.inEmbeddings.forEach((inNode) => {
+      node.inEmbeddings.forEach(inNode => {
         if (inNode.compatible) {
           parent.compatibilityHistogram.compatible =
             (parent.compatibilityHistogram.compatible || 0) + 1;
@@ -708,7 +709,7 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
         }
       });
 
-      node.outEmbeddings.forEach((outNode) => {
+      node.outEmbeddings.forEach(outNode => {
         if (outNode.compatible) {
           parent.compatibilityHistogram.compatible =
             (parent.compatibilityHistogram.compatible || 0) + 1;
@@ -721,8 +722,8 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
       if (i === path.length - 1) {
         break;
       }
-      let name = path[i];
-      let child = <Metanode>h.node(name);
+      const name = path[i];
+      let child = h.node(name) as Metanode;
       if (!child) {
         child = createMetanode(name, h.graphOptions);
         child.parentNode = parent;
@@ -762,11 +763,11 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
     parent.metagraph.setNode(node.name, node);
 
     // Add each of the in-embeddings and out-embeddings in the hierarchy.
-    node.inEmbeddings.forEach(function(embedding) {
+    node.inEmbeddings.forEach(embedding => {
       h.setNode(embedding.name, embedding);
       embedding.parentNode = node;
     });
-    node.outEmbeddings.forEach(function(embedding) {
+    node.outEmbeddings.forEach(embedding => {
       h.setNode(embedding.name, embedding);
       embedding.parentNode = node;
     });
@@ -781,19 +782,19 @@ function addNodes(h: Hierarchy, graph: SlimGraph) {
 function addEdges(
   h: Hierarchy,
   graph: SlimGraph,
-  seriesNames: {[name: string]: string}
+  seriesNames: { [name: string]: string }
 ) {
-  let nodeIndex = h.getNodeMap();
+  const nodeIndex = h.getNodeMap();
 
   // Ancestor paths for the source and destination nodes of an edge. These are
   // reused for each edge rather than allocating new ones. It's about 10% faster
   // than allocating new ones on each pass through the loop.
-  let sourcePath: string[] = [];
-  let destPath: string[] = [];
+  const sourcePath: string[] = [];
+  const destPath: string[] = [];
 
   // Insert the ancestor path for a node into the provided array, including the
   // node itself. Return the index of the last node inserted (always ROOT).
-  let getPath = (node: Node, path: string[]): number => {
+  const getPath = (node: Node, path: string[]): number => {
     let i = 0;
     while (node) {
       path[i++] = node.name;
@@ -802,7 +803,7 @@ function addEdges(
     return i - 1;
   };
 
-  graph.edges.forEach((baseEdge) => {
+  graph.edges.forEach(baseEdge => {
     // Get the hierarchical paths for the source and destination of the edge.
     let sourceAncestorIndex = getPath(graph.nodes[baseEdge.v], sourcePath);
     let destAncestorIndex = getPath(graph.nodes[baseEdge.w], destPath);
@@ -828,11 +829,11 @@ function addEdges(
       }
     }
 
-    let sharedAncestorNode = <GroupNode>(
-      nodeIndex[sourcePath[sourceAncestorIndex + 1]]
-    );
-    let sourceAncestorName = sourcePath[sourceAncestorIndex];
-    let destAncestorName = destPath[destAncestorIndex];
+    const sharedAncestorNode = nodeIndex[
+      sourcePath[sourceAncestorIndex + 1]
+    ] as GroupNode;
+    const sourceAncestorName = sourcePath[sourceAncestorIndex];
+    const destAncestorName = destPath[destAncestorIndex];
 
     // Find or create the Metaedge which should contain this BaseEdge inside
     // the shared ancestor.
@@ -881,17 +882,17 @@ function addEdges(
 function groupSeries(
   metanode: Metanode,
   hierarchy: Hierarchy,
-  seriesNames: {[name: string]: string},
+  seriesNames: { [name: string]: string },
   threshold: number,
-  map: {[name: string]: SeriesGroupingType},
+  map: { [name: string]: SeriesGroupingType },
   useGeneralizedSeriesPatterns: boolean
 ) {
-  let metagraph = metanode.metagraph;
-  metagraph.nodes().forEach((n) => {
-    let child = metagraph.node(n);
+  const metagraph = metanode.metagraph;
+  metagraph.nodes().forEach(n => {
+    const child = metagraph.node(n);
     if (child.type === NodeType.META) {
       groupSeries(
-        <Metanode>child,
+        child as Metanode,
         hierarchy,
         seriesNames,
         threshold,
@@ -901,12 +902,12 @@ function groupSeries(
     }
   });
 
-  let clusters = clusterNodes(metagraph);
+  const clusters = clusterNodes(metagraph);
 
   const detectSeriesMethod = useGeneralizedSeriesPatterns
     ? detectSeriesAnywhereInNodeName
     : detectSeriesUsingNumericSuffixes;
-  let seriesDict = detectSeriesMethod(
+  const seriesDict = detectSeriesMethod(
     clusters,
     metagraph,
     hierarchy.graphOptions
@@ -915,9 +916,9 @@ function groupSeries(
   // Add each series node to the graph and add its grouped children to its own
   // metagraph.
   Object.entries(seriesDict).forEach(([seriesName, seriesNode]) => {
-    let nodeMemberNames = seriesNode.metagraph.nodes();
-    nodeMemberNames.forEach((n) => {
-      let child = <OpNode>metagraph.node(n);
+    const nodeMemberNames = seriesNode.metagraph.nodes();
+    nodeMemberNames.forEach(n => {
+      const child = metagraph.node(n) as OpNode;
       if (!child.owningSeries) {
         child.owningSeries = seriesName;
       }
@@ -937,8 +938,8 @@ function groupSeries(
     }
     hierarchy.setNode(seriesName, seriesNode); // add to the index
     metagraph.setNode(seriesName, seriesNode);
-    nodeMemberNames.forEach((n) => {
-      let child = <OpNode>metagraph.node(n);
+    nodeMemberNames.forEach(n => {
+      const child = metagraph.node(n) as OpNode;
       seriesNode.metagraph.setNode(n, child);
       seriesNode.parentNode = child.parentNode;
       seriesNode.cardinality++;
@@ -961,7 +962,7 @@ function groupSeries(
       }
 
       // Increment capability counts for in and out embeddings
-      child.inEmbeddings.forEach((inNode) => {
+      child.inEmbeddings.forEach(inNode => {
         if (inNode.compatible) {
           seriesNode.compatibilityHistogram.compatible =
             (seriesNode.compatibilityHistogram.compatible || 0) + 1;
@@ -971,7 +972,7 @@ function groupSeries(
         }
       });
 
-      child.outEmbeddings.forEach((outNode) => {
+      child.outEmbeddings.forEach(outNode => {
         if (outNode.compatible) {
           seriesNode.compatibilityHistogram.compatible =
             (seriesNode.compatibilityHistogram.compatible || 0) + 1;
@@ -992,18 +993,17 @@ function groupSeries(
 /** cluster op-nodes with similar op */
 function clusterNodes(
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>
-): {[clusterId: string]: string[]} {
-  let result: {[clusterId: string]: string[]} = {};
-  return;
-  metagraph
+): { [clusterId: string]: string[] } {
+  const result: { [clusterId: string]: string[] } = {};
+  return metagraph
     .nodes()
-    .reduce((clusters: {[clusterId: string]: string[]}, n: string) => {
-      let child = metagraph.node(n);
+    .reduce((clusters: { [clusterId: string]: string[] }, n: string) => {
+      const child = metagraph.node(n);
       if (child.type === NodeType.META) {
         // skip metanodes
         return clusters;
       }
-      let template = (<OpNode>child).op;
+      const template = (child as OpNode).op;
       if (template) {
         clusters[template] = clusters[template] || [];
         clusters[template].push(child.name);
@@ -1022,11 +1022,11 @@ function clusterNodes(
  * @return A dictionary from series name => seriesNode
  */
 function detectSeriesUsingNumericSuffixes(
-  clusters: {[clusterId: string]: string[]},
+  clusters: { [clusterId: string]: string[] },
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>,
   graphOptions: graphlib.GraphOptions
-): {[seriesName: string]: SeriesNode} {
-  let seriesDict: {[seriesName: string]: SeriesNode} = {};
+): { [seriesName: string]: SeriesNode } {
+  const seriesDict: { [seriesName: string]: SeriesNode } = {};
   Object.entries(clusters || {}).forEach(([clusterId, members]) => {
     if (members.length <= 1) {
       return;
@@ -1035,17 +1035,17 @@ function detectSeriesUsingNumericSuffixes(
      * which is an array that contains objects with name, id, prefix, suffix,
      * and parent properties.
      */
-    let candidatesDict: {[seriesName: string]: SeriesNode[]} = {};
+    const candidatesDict: { [seriesName: string]: SeriesNode[] } = {};
 
     // Group all nodes that have the same name, with the exception of a
     // number at the end of the name after an underscore, which is allowed to
     // vary.
-    members.forEach(function(name: string) {
-      let isGroup = name.charAt(name.length - 1) === '*';
-      let namepath = name.split('/');
-      let leaf = namepath[namepath.length - 1];
-      let parent = namepath.slice(0, namepath.length - 1).join('/');
-      let matches = leaf.match(/^(\D*)_(\d+)$/);
+    members.forEach((name: string) => {
+      const isGroup = name.charAt(name.length - 1) === '*';
+      const namepath = name.split('/');
+      const leaf = namepath[namepath.length - 1];
+      const parent = namepath.slice(0, namepath.length - 1).join('/');
+      const matches = leaf.match(/^(\D*)_(\d+)$/);
 
       let prefix;
       let id;
@@ -1060,9 +1060,9 @@ function detectSeriesUsingNumericSuffixes(
         id = 0;
         suffix = isGroup ? '*' : '';
       }
-      let seriesName = getSeriesNodeName(prefix, suffix, parent);
+      const seriesName = getSeriesNodeName(prefix, suffix, parent);
       candidatesDict[seriesName] = candidatesDict[seriesName] || [];
-      let seriesNode = createSeriesNode(
+      const seriesNode = createSeriesNode(
         prefix,
         suffix,
         parent,
@@ -1079,7 +1079,7 @@ function detectSeriesUsingNumericSuffixes(
       if (seriesInfoArray.length < 2) {
         return;
       }
-      seriesInfoArray.sort(function(a, b) {
+      seriesInfoArray.sort((a, b) => {
         return +a.clusterId - +b.clusterId;
       });
 
@@ -1087,7 +1087,7 @@ function detectSeriesUsingNumericSuffixes(
       // all nodes with monotonically-increasing series numbers.
       let seriesNodes = [seriesInfoArray[0]];
       for (let index = 1; index < seriesInfoArray.length; index++) {
-        let nextNode = seriesInfoArray[index];
+        const nextNode = seriesInfoArray[index];
         if (
           nextNode.clusterId ===
           seriesNodes[seriesNodes.length - 1].clusterId + 1
@@ -1126,11 +1126,11 @@ function detectSeriesUsingNumericSuffixes(
  * @return A dictionary from series name => seriesNode
  */
 function detectSeriesAnywhereInNodeName(
-  clusters: {[clusterId: string]: string[]},
+  clusters: { [clusterId: string]: string[] },
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>,
   graphOptions: graphlib.GraphOptions
-): {[seriesName: string]: SeriesNode} {
-  let seriesDict: {[seriesName: string]: SeriesNode} = {};
+): { [seriesName: string]: SeriesNode } {
+  const seriesDict: { [seriesName: string]: SeriesNode } = {};
   Object.entries(clusters || {}).forEach(([clusterId, members]) => {
     if (members.length <= 1) {
       return;
@@ -1139,25 +1139,26 @@ function detectSeriesAnywhereInNodeName(
     /**
      * @type {Object}  A dictionary mapping a series name to a SeriesNode.
      */
-    let forwardDict: {[seriesName: string]: SeriesNode} = {};
+    const forwardDict: { [seriesName: string]: SeriesNode } = {};
     /**
      * @type {Object}  A dictionary mapping member name to an array of series
      * names this member could potentially be grouped under and the
      * corresponding ids.
      */
-    let reverseDict: {[seriesName: string]: any[]} = {};
+    // tslint:disable-next-line: no-any
+    const reverseDict: { [seriesName: string]: any[] } = {};
 
     // Group all nodes that have the same name, with the exception of a
     // number at the end of the name after an underscore, which is allowed to
     // vary.
-    members.forEach(function(name: string) {
-      let isGroup = name.charAt(name.length - 1) === '*';
-      let namepath = name.split('/');
-      let leaf = namepath[namepath.length - 1];
-      let parent = namepath.slice(0, namepath.length - 1).join('/');
+    members.forEach((name: string) => {
+      const isGroup = name.charAt(name.length - 1) === '*';
+      const namepath = name.split('/');
+      const leaf = namepath[namepath.length - 1];
+      const parent = namepath.slice(0, namepath.length - 1).join('/');
 
       const numRegex = /(\d+)/g;
-      let matches = [];
+      const matches = [];
       let matchResult;
       let prefix;
       let id;
@@ -1166,7 +1167,9 @@ function detectSeriesAnywhereInNodeName(
       let matched = 0;
       // Scan over the entire leaf name and match any possible numbers,
       // and put the results into corresponding dictionaries.
-      while ((matchResult = numRegex.exec(leaf))) {
+
+      matchResult = numRegex.exec(leaf);
+      while (matchResult != null) {
         ++matched;
         prefix = leaf.slice(0, matchResult.index);
         id = matchResult[0];
@@ -1186,6 +1189,8 @@ function detectSeriesAnywhereInNodeName(
         forwardDict[seriesName].ids.push(id);
         reverseDict[name] = reverseDict[name] || [];
         reverseDict[name].push([seriesName, id]);
+
+        matchResult = numRegex.exec(leaf);
       }
       if (matched < 1) {
         prefix = isGroup ? leaf.substr(0, leaf.length - 1) : leaf;
@@ -1212,20 +1217,20 @@ function detectSeriesAnywhereInNodeName(
      * which is an array that contains objects with name, id, prefix, suffix,
      * and parent properties.
      */
-    var candidatesDict: {[seriesName: string]: SeriesNode[]} = {};
+    const candidatesDict: { [seriesName: string]: SeriesNode[] } = {};
     // For each of the member, put it into the maximum possible series,
     // and create candidatesDict accordingly.
     Object.entries(reverseDict).forEach(([name, seriesNameIdArray]) => {
-      seriesNameIdArray.sort(function(a, b) {
+      seriesNameIdArray.sort((a, b) => {
         return forwardDict[b[0]].ids.length - forwardDict[a[0]].ids.length;
       });
-      var seriesName = seriesNameIdArray[0][0];
-      var id = seriesNameIdArray[0][1];
+      const seriesName = seriesNameIdArray[0][0];
+      const id = seriesNameIdArray[0][1];
       candidatesDict[seriesName] = candidatesDict[seriesName] || [];
       const namepath = name.split('/');
       const leaf = namepath[namepath.length - 1];
       const parent = namepath.slice(0, namepath.length - 1).join('/');
-      var seriesNode = createSeriesNode(
+      const seriesNode = createSeriesNode(
         forwardDict[seriesName].prefix,
         forwardDict[seriesName].suffix,
         parent,
@@ -1242,7 +1247,7 @@ function detectSeriesAnywhereInNodeName(
       if (seriesInfoArray.length < 2) {
         return;
       }
-      seriesInfoArray.sort(function(a, b) {
+      seriesInfoArray.sort((a, b) => {
         return +a.clusterId - +b.clusterId;
       });
 
@@ -1250,7 +1255,7 @@ function detectSeriesAnywhereInNodeName(
       // all nodes with monotonically-increasing series numbers.
       let seriesNodes = [seriesInfoArray[0]];
       for (let index = 1; index < seriesInfoArray.length; index++) {
-        let nextNode = seriesInfoArray[index];
+        const nextNode = seriesInfoArray[index];
         if (
           nextNode.clusterId ===
           seriesNodes[seriesNodes.length - 1].clusterId + 1
@@ -1291,20 +1296,20 @@ function detectSeriesAnywhereInNodeName(
  */
 function addSeriesToDict(
   seriesNodes: SeriesNode[],
-  seriesDict: {[seriesName: string]: SeriesNode},
+  seriesDict: { [seriesName: string]: SeriesNode },
   clusterId: number,
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>,
   graphOptions: graphlib.GraphOptions
 ) {
   if (seriesNodes.length > 1) {
-    let curSeriesName = getSeriesNodeName(
+    const curSeriesName = getSeriesNodeName(
       seriesNodes[0].prefix,
       seriesNodes[0].suffix,
       seriesNodes[0].parent,
       seriesNodes[0].clusterId,
       seriesNodes[seriesNodes.length - 1].clusterId
     );
-    let curSeriesNode = createSeriesNode(
+    const curSeriesNode = createSeriesNode(
       seriesNodes[0].prefix,
       seriesNodes[0].suffix,
       seriesNodes[0].parent,
@@ -1312,7 +1317,7 @@ function addSeriesToDict(
       curSeriesName,
       graphOptions
     );
-    seriesNodes.forEach(function(node) {
+    seriesNodes.forEach(node => {
       curSeriesNode.ids.push(node.clusterId);
       curSeriesNode.metagraph.setNode(node.name, metagraph.node(node.name));
     });

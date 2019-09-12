@@ -1,12 +1,12 @@
 import {
   Component,
-  OnInit,
-  Input,
-  Output,
   EventEmitter,
+  Input,
   OnChanges,
+  OnInit,
+  Output,
 } from '@angular/core';
-import {Observable} from 'rxjs';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-graph-info',
@@ -14,12 +14,12 @@ import {Observable} from 'rxjs';
   styleUrls: ['./graph-info.component.scss'],
 })
 export class GraphInfoComponent implements OnInit {
-  @Input() public graphName$: Observable<string>;
-  @Output() public clickHandler = new EventEmitter<void>();
+  @Input() graphName$: Observable<string>;
+  @Output() clickHandler = new EventEmitter<void>();
 
   constructor() {}
 
-  public handleClick(component) {
+  handleClick(component) {
     console.log('click', component);
     this.clickHandler.emit();
   }

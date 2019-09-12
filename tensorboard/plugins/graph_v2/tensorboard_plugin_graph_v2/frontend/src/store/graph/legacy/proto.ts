@@ -39,7 +39,8 @@ export interface NodeDef {
   /** The name of the operation associated with this node. */
   op: string;
   /** List of attributes that describe/modify the operation. */
-  attr: {key: string; value: any}[];
+  // tslint:disable-next-line: no-any
+  attr: Array<{ key: string; value: any }>;
 }
 
 /**
@@ -119,7 +120,8 @@ export interface GenericGraph {
   /** List of nodes in the graph */
   edge: GenericEdge[];
   /** List of attributes that describe/modify the operation. */
-  attr: Array<{[key: string]: any}>;
+  // tslint:disable-next-line: no-any
+  attr: Array<{ [key: string]: any }>;
 }
 
 /**
@@ -131,7 +133,8 @@ export interface GenericEdge {
   /** Name of the target node. */
   target: string;
   /** Attributes of the edge. */
-  edge_attr: Array<{[key: string]: any}>;
+  // tslint:disable-next-line: no-any
+  edge_attr: Array<{ [key: string]: any }>;
 }
 
 /**
@@ -141,9 +144,11 @@ export interface GenericNode {
   /** Name of the node */
   name: string;
   /** Attributes of a leaf node or leaf nodes within a metanode. */
-  node_attr: Array<{[key: string]: any}>;
+  // tslint:disable-next-line: no-any
+  node_attr: Array<{ [key: string]: any }>;
   /** Attributes of a metanode. */
-  metanode_attr: Array<{[key: string]: any}>;
+  // tslint:disable-next-line: no-any
+  metanode_attr: Array<{ [key: string]: any }>;
 }
 
 export interface DevStat {
@@ -169,11 +174,11 @@ export interface NodeExecStats {
   op_start_rel_micros: number;
   op_end_rel_micros: number;
   all_end_rel_micros: number;
-  memory: {
+  memory: Array<{
     allocator_name: string;
     total_bytes: number; // Stored as string in json and should be parsed.
     peak_bytes: number; // Stored as string in json and should be parsed.
-  }[];
+  }>;
   /** Output sizes recorded for a single execution of a graph node */
   output: NodeOutput[];
   timeline_label: string;
@@ -198,12 +203,12 @@ export interface NodeOutput {
        * are optional. The order of entries in 'dim' matters: It indicates
        * the layout of the values in the tensor in-memory representation.
        */
-      dim: {
+      dim: Array<{
         /** Size of the tensor in that dimension */
         size: number; // Stored as string in json and should be parsed.
         /** Optional name of the tensor dimension */
         name?: string;
-      }[];
+      }>;
     };
     /** Information about the size and allocator used for the data */
     allocation_description: {

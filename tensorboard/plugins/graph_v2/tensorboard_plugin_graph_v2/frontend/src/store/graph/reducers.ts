@@ -15,15 +15,17 @@
  * =============================================================================
  */
 
-import {createReducer, on} from '@ngrx/store';
-import {GraphUIState, INITIAL_GRAPH_UI_STATE} from './types';
-import {SetGraphName, SetGraphAndHierarchy} from './actions';
-import {GraphAndHierarchy} from './legacy/loader';
+import { createReducer, on } from '@ngrx/store';
+import { setGraphAndHierarchy, setGraphName } from './actions';
+import { GraphAndHierarchy } from './legacy/loader';
+import { GraphUIState, INITIAL_GRAPH_UI_STATE } from './types';
 
 export const graphReducer = createReducer(
   INITIAL_GRAPH_UI_STATE,
-  on(SetGraphName, (state, {graphName}) => applySetGraphName(state, graphName)),
-  on(SetGraphAndHierarchy, (state, {graphAndHierarchy}) =>
+  on(setGraphName, (state, { graphName }) =>
+    applySetGraphName(state, graphName)
+  ),
+  on(setGraphAndHierarchy, (state, { graphAndHierarchy }) =>
     applySetGraphAndHierarchy(state, graphAndHierarchy)
   )
 );
@@ -32,12 +34,12 @@ export function applySetGraphName(
   state: GraphUIState,
   graphName: string
 ): GraphUIState {
-  return {...state, graphName};
+  return { ...state, graphName };
 }
 
 export function applySetGraphAndHierarchy(
   state: GraphUIState,
   graphAndHierarchy: GraphAndHierarchy
 ): GraphUIState {
-  return {...state, graphAndHierarchy};
+  return { ...state, graphAndHierarchy };
 }

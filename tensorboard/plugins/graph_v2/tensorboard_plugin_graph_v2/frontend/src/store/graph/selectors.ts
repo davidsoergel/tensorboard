@@ -15,19 +15,19 @@
  * =============================================================================
  */
 
-import {GraphUIState} from './types';
 import {
-  MemoizedSelector,
   createFeatureSelector,
   createSelector,
+  MemoizedSelector,
 } from '@ngrx/store';
+import { GraphUIState } from './types';
 
 export const selectGraphState: MemoizedSelector<
   object,
   GraphUIState
 > = createFeatureSelector<GraphUIState>('graph');
 
-export const selectGraphName: MemoizedSelector<object, any> = createSelector(
+export const selectGraphName: MemoizedSelector<object, string> = createSelector(
   selectGraphState,
   (graph: GraphUIState) => graph.graphName
 );

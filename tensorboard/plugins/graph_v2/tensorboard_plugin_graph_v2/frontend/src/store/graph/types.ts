@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import {GraphAndHierarchy} from './legacy/loader';
+import { GraphAndHierarchy } from './legacy/loader';
 
 export interface GraphUIState {
   // TODO(soergel): this is a stub

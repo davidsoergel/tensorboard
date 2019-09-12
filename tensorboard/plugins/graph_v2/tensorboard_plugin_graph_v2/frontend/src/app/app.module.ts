@@ -1,23 +1,23 @@
-import {BrowserModule} from '@angular/platform-browser';
-import {NgModule} from '@angular/core';
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
 
-import {StoreModule, MetaReducer} from '@ngrx/store';
-import {StoreDevtoolsModule} from '@ngrx/store-devtools';
-import {environment} from '../environments/environment'; // Angular CLI environment
-import {EffectsModule} from '@ngrx/effects';
+import { EffectsModule } from '@ngrx/effects';
+import { MetaReducer, StoreModule } from '@ngrx/store';
+import { StoreDevtoolsModule } from '@ngrx/store-devtools';
+import { environment } from '../environments/environment'; // Angular CLI environment
 
-import {AppComponent} from './app.component';
-import {GraphV2Effects} from 'src/store/graph/effects';
-import {GraphInfoComponent} from './graph-info/graph-info.component';
-import {GraphInfoContainerComponent} from './graph-info-container/graph-info-container.component';
-import {INITIAL_GRAPH_V2_PLUGIN_STATE, graphV2PluginReducer} from 'src/store';
+import { graphV2PluginReducer, INITIAL_GRAPH_V2_PLUGIN_STATE } from 'src/store';
+import { GraphV2Effects } from 'src/store/graph/effects';
+import { AppComponent } from './app.component';
+import { GraphInfoContainerComponent } from './graph-info-container/graph-info-container.component';
+import { GraphInfoComponent } from './graph-info/graph-info.component';
 
-import {storeFreeze} from 'ngrx-store-freeze';
-import {GraphV2PluginState} from 'src/store/types';
+import { storeFreeze } from 'ngrx-store-freeze';
+import { GraphV2PluginState } from 'src/store/types';
 
-export const metaReducers: MetaReducer<
-  GraphV2PluginState
->[] = !environment.production ? [storeFreeze] : [];
+export const metaReducers: Array<
+  MetaReducer<GraphV2PluginState>
+> = !environment.production ? [storeFreeze] : [];
 
 @NgModule({
   declarations: [AppComponent, GraphInfoComponent, GraphInfoContainerComponent],

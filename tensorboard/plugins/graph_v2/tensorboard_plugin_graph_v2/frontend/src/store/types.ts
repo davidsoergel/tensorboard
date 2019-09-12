@@ -15,7 +15,7 @@
  * =============================================================================
  */
 
-import {GraphUIState, INITIAL_GRAPH_UI_STATE} from './graph/types';
+import { GraphUIState, INITIAL_GRAPH_UI_STATE } from './graph/types';
 
 /**
  * Top level state of the application.

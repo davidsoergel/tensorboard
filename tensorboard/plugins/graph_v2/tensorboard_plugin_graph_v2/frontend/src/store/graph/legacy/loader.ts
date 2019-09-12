@@ -13,23 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+import { buildGraph, DEFAULT_BUILD_PARAMS, SlimGraph } from './graph';
 import * as hierarchy from './hierarchy';
-import * as util from './util';
-import * as parser from './parser';
 import * as op from './op';
-import {SlimGraph, DefaultBuildParams, buildGraph} from './graph';
+import * as parser from './parser';
+import * as util from './util';
 
-export type GraphAndHierarchy = {
+export interface GraphAndHierarchy {
   graph: SlimGraph;
   graphHierarchy: hierarchy.Hierarchy;
-};
+}
 
 export function fetchAndConstructHierarchicalGraph(
   tracker: util.Tracker,
   remotePath: string | null,
   pbTxtFile: Blob | null,
   compatibilityProvider: op.CompatibilityProvider = new op.TpuCompatibilityProvider(),
-  hierarchyParams: hierarchy.HierarchyParams = hierarchy.DefaultHierarchyParams
+  hierarchyParams: hierarchy.HierarchyParams = hierarchy.DEFAULT_HIERARCHY_PARAMS
 ): Promise<GraphAndHierarchy> {
   const dataTracker = util.getSubtaskTracker(tracker, 30, 'Data');
   const graphTracker = util.getSubtaskTracker(tracker, 20, 'Graph');
@@ -42,7 +42,7 @@ export function fetchAndConstructHierarchicalGraph(
   return parser
     .fetchAndParseGraphData(remotePath, pbTxtFile, dataTracker)
     .then(
-      function(graph) {
+      graph => {
         if (!graph.node) {
           throw new Error(
             'The graph is empty. This can happen when ' +
@@ -52,7 +52,7 @@ export function fetchAndConstructHierarchicalGraph(
           );
         }
 
-        return buildGraph(graph, DefaultBuildParams, graphTracker);
+        return buildGraph(graph, DEFAULT_BUILD_PARAMS, graphTracker);
       },
       () => {
         throw new Error(
@@ -63,7 +63,7 @@ export function fetchAndConstructHierarchicalGraph(
         );
       }
     )
-    .then(async (graph) => {
+    .then(async graph => {
       // Populate compatible field of OpNode based on whitelist
       op.checkOpsForCompatibility(graph, compatibilityProvider);
       const graphHierarchy = await hierarchy.buildHierarchy(
@@ -71,9 +71,9 @@ export function fetchAndConstructHierarchicalGraph(
         hierarchyParams,
         hierarchyTracker
       );
-      return {graph, graphHierarchy};
+      return { graph, graphHierarchy };
     })
-    .catch((e) => {
+    .catch(e => {
       // Generic error catch, for errors that happened outside
       // asynchronous tasks.
       const msg = `Graph visualization failed.\n\n${e}`;

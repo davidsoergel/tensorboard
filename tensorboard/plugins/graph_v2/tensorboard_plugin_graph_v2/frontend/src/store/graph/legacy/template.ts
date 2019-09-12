@@ -16,29 +16,29 @@ limitations under the License.
 // tslint:disable-next-line: no-reference
 ///<reference path="./graphlib.d.ts" />
 import * as graphlib from 'graphlib';
-import * as hierarchy from './hierarchy';
 import {
-  ROOT_NAME,
+  createGraph,
+  createMetaedge,
+  createMetanode,
+  createSeriesNode,
   FUNCTION_LIBRARY_NODE_PREFIX,
   getHierarchicalPath,
+  getSeriesNodeName,
+  GraphType,
+  GroupNode,
+  hasSimilarDegreeSequence,
+  Metaedge,
+  MetaedgeImpl,
+  Metanode,
+  Node,
   NodeType,
+  OpNode,
+  ROOT_NAME,
+  SeriesGroupingType,
   SeriesNode,
   SlimGraph,
-  SeriesGroupingType,
-  Node,
-  Metaedge,
-  Metanode,
-  GroupNode,
-  OpNode,
-  createMetanode,
-  createMetaedge,
-  createGraph,
-  GraphType,
-  getSeriesNodeName,
-  createSeriesNode,
-  MetaedgeImpl,
-  hasSimilarDegreeSequence,
 } from './graph';
+import * as hierarchy from './hierarchy';
 
 /**
  * Detect repeating patterns of subgraphs.
@@ -49,14 +49,14 @@ import {
  * @param verifyTemplate whether to run the template verification algorithm
  * @return a dict (template id => Array of node names)
  */
-export function detect(h, verifyTemplate): {[templateId: string]: string[]} {
+export function detect(h, verifyTemplate): { [templateId: string]: string[] } {
   // In any particular subgraph, there are either
   // - leaf nodes (which do not have subgraph)
   // - metanode nodes - some of them have only one member (singular metanode)
   //                    and some have multiple members (non-singular metanode)
 
   // First, generate a nearest neighbor hash of metanode nodes.
-  let nnGroups = clusterSimilarSubgraphs(h);
+  const nnGroups = clusterSimilarSubgraphs(h);
 
   // For each metanode, compare its subgraph (starting from shallower groups)
   // and assign template id.
@@ -66,7 +66,7 @@ export function detect(h, verifyTemplate): {[templateId: string]: string[]} {
   // as this leads to optimal setting of the colors of each template for
   // maximum differentiation.
   return Object.keys(templates)
-    .sort((key) => templates[key].level)
+    .sort(key => templates[key].level)
     .reduce((obj, key) => {
       obj[key] = templates[key];
       return obj;
@@ -77,6 +77,7 @@ export function detect(h, verifyTemplate): {[templateId: string]: string[]} {
  * @return Unique string for a metanode based on depth, |V|, |E| and
  * op type histogram.
  */
+// tslint:disable-next-line: no-any
 function getSignature(metanode: any) {
   // TODO(soergel) GroupNode | OpNode) {
   const props = `depth=${metanode.depth} |V|=${
@@ -84,7 +85,7 @@ function getSignature(metanode: any) {
   } |E|=${metanode.metagraph.edges().length}`;
 
   // optype1=count1,optype2=count2
-  let ops = Object.entries(metanode.opHistogram)
+  const ops = Object.entries(metanode.opHistogram)
     .map((op, count) => {
       return op + '=' + count;
     })
@@ -105,14 +106,14 @@ function getSignature(metanode: any) {
 function clusterSimilarSubgraphs(h: hierarchy.Hierarchy) {
   /** a dict from metanode.signature() => Array of tf.graph.Groups */
   const map = h.getNodeMap();
-  let hashDict = Object.keys(map).reduce((reduced: Object, name: string) => {
+  const hashDict = Object.keys(map).reduce((reduced: {}, name: string) => {
     const node: OpNode | GroupNode = map[name];
     if (node.type !== NodeType.META) {
       return reduced;
     }
-    let levelOfMetaNode = name.split('/').length - 1;
-    let signature = getSignature(node);
-    let templateInfo = reduced[signature] || {
+    const levelOfMetaNode = name.split('/').length - 1;
+    const signature = getSignature(node);
+    const templateInfo = reduced[signature] || {
       nodes: [],
       level: levelOfMetaNode,
     };
@@ -125,9 +126,9 @@ function clusterSimilarSubgraphs(h: hierarchy.Hierarchy) {
   }, {});
 
   return Object.keys(hashDict)
-    .map((key) => [key, hashDict[key]])
+    .map(key => [key, hashDict[key]])
     .filter(([_, subGraph]) => {
-      const {nodes} = subGraph;
+      const { nodes } = subGraph;
       if (nodes.length > 1) {
         // There is more than 1 node with this template. It is worth assigning
         // a unique color to this template.
@@ -152,20 +153,21 @@ function clusterSimilarSubgraphs(h: hierarchy.Hierarchy) {
 function groupTemplateAndAssignId(
   nnGroups,
   verifyTemplate
-): {[templateId: string]: {level: number; nodes: string[]}} {
+): { [templateId: string]: { level: number; nodes: string[] } } {
   // For each metanode, compare its subgraph (starting from shallower groups)
   // and assign template id.
-  let result: {[templateId: string]: {level: number; nodes: string[]}} = {};
-  return;
-  nnGroups.reduce((templates, nnGroupPair) => {
-    let signature = nnGroupPair[0],
+  const result: {
+    [templateId: string]: { level: number; nodes: string[] };
+  } = {};
+  return nnGroups.reduce((templates, nnGroupPair) => {
+    const signature = nnGroupPair[0],
       nnGroup = nnGroupPair[1].nodes,
       clusters = [];
 
-    nnGroup.forEach((metanode) => {
+    nnGroup.forEach(metanode => {
       // check with each existing cluster
       for (let i = 0; i < clusters.length; i++) {
-        let similar =
+        const similar =
           !verifyTemplate ||
           isSimilarSubgraph(clusters[i].metanode.metagraph, metanode.metagraph);
         // if similar, just add this metanode to the cluster
@@ -179,12 +181,12 @@ function groupTemplateAndAssignId(
       // otherwise create a new cluster with id 'signature [count] '
       metanode.templateId = signature + '[' + clusters.length + ']';
       clusters.push({
-        metanode: metanode,
+        metanode,
         members: [metanode.name],
       });
     });
 
-    clusters.forEach((c) => {
+    clusters.forEach(c => {
       templates[c.metanode.templateId] = {
         level: nnGroupPair[1].level,
         nodes: c.members,
@@ -240,7 +242,9 @@ function sortNodes(
 }
 
 function isSimilarSubgraph(
+  // tslint:disable-next-line: no-any
   g1: graphlib.Graph<any, any>,
+  // tslint:disable-next-line: no-any
   g2: graphlib.Graph<any, any>
 ) {
   if (!hasSimilarDegreeSequence(g1, g2)) {
@@ -251,19 +255,19 @@ function isSimilarSubgraph(
   // return true;
 
   // Verify sequence by running DFS
-  let g1prefix = g1.graph().name;
-  let g2prefix = g2.graph().name;
+  const g1prefix = g1.graph().name;
+  const g2prefix = g2.graph().name;
 
-  let visited1 = {};
-  let visited2 = {};
-  let stack = [];
+  const visited1 = {};
+  const visited2 = {};
+  const stack = [];
 
   /**
    * push sources or successors into the stack
    * if the visiting pattern has been similar.
    */
   function stackPushIfNotDifferent(n1, n2) {
-    let sub1 = n1.substr(g1prefix.length),
+    const sub1 = n1.substr(g1prefix.length),
       sub2 = n2.substr(g2prefix.length);
 
     /* tslint:disable */
@@ -281,7 +285,7 @@ function isSimilarSubgraph(
     if (!visited1[sub1]) {
       // implied && !visited2[sub2]
       visited1[sub1] = visited2[sub2] = true;
-      stack.push({n1: n1, n2: n2});
+      stack.push({ n1, n2 });
     }
 
     return false;
@@ -300,17 +304,17 @@ function isSimilarSubgraph(
   sources2 = sortNodes(sources2, g2, g2prefix);
 
   for (let i = 0; i < sources1.length; i++) {
-    let different = stackPushIfNotDifferent(sources1[i], sources2[i]);
+    const different = stackPushIfNotDifferent(sources1[i], sources2[i]);
     if (different) {
       return false;
     }
   }
 
   while (stack.length > 0) {
-    let cur = stack.pop();
+    const cur = stack.pop();
 
     // check node
-    let similar = isSimilarNode(g1.node(cur.n1), g2.node(cur.n2));
+    const similar = isSimilarNode(g1.node(cur.n1), g2.node(cur.n2));
     if (!similar) {
       return false;
     }
@@ -328,7 +332,7 @@ function isSimilarSubgraph(
     succ2 = sortNodes(succ2, g2, g2prefix);
 
     for (let j = 0; j < succ1.length; j++) {
-      let different = stackPushIfNotDifferent(succ1[j], succ2[j]);
+      const different = stackPushIfNotDifferent(succ1[j], succ2[j]);
       if (different) {
         return false;
       }
@@ -347,8 +351,8 @@ function isSimilarNode(
 ): boolean {
   if (n1.type === NodeType.META) {
     // compare metanode
-    let metanode1 = <Metanode>n1;
-    let metanode2 = <Metanode>n2;
+    const metanode1 = n1 as Metanode;
+    const metanode2 = n2 as Metanode;
     return (
       metanode1.templateId &&
       metanode2.templateId &&
@@ -356,18 +360,18 @@ function isSimilarNode(
     );
   } else if (n1.type === NodeType.OP && n2.type === NodeType.OP) {
     // compare leaf node
-    return (<OpNode>n1).op === (<OpNode>n2).op;
+    return (n1 as OpNode).op === (n2 as OpNode).op;
   } else if (n1.type === NodeType.SERIES && n2.type === NodeType.SERIES) {
     // compare series node sizes and operations
     // (only need to check one op as all op nodes are identical in series)
-    let sn1 = <SeriesNode>n1;
-    let sn2 = <SeriesNode>n2;
-    let seriesnode1Count = sn1.metagraph.nodeCount();
+    const sn1 = n1 as SeriesNode;
+    const sn2 = n2 as SeriesNode;
+    const seriesnode1Count = sn1.metagraph.nodeCount();
     return (
       seriesnode1Count === sn2.metagraph.nodeCount() &&
       (seriesnode1Count === 0 ||
-        (<OpNode>sn1.metagraph.node(sn1.metagraph.nodes()[0])).op ===
-          (<OpNode>sn2.metagraph.node(sn2.metagraph.nodes()[0])).op)
+        (sn1.metagraph.node(sn1.metagraph.nodes()[0]) as OpNode).op ===
+          (sn2.metagraph.node(sn2.metagraph.nodes()[0]) as OpNode).op)
     );
   }
   return false;

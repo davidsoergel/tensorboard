@@ -15,22 +15,22 @@
  * =============================================================================
  */
 
-import {createAction} from '@ngrx/store';
-import {GraphUIState} from './types';
-import {GraphAndHierarchy} from './legacy/loader';
+import { createAction } from '@ngrx/store';
+import { GraphAndHierarchy } from './legacy/loader';
+import { GraphUIState } from './types';
 
 /** Represents the intent to clear the graph. */
-export const ClearGraph = createAction('[Graph] Clear Graph');
+export const clearGraph = createAction('[Graph] Clear Graph');
 
 /** Represents the intent to reset the graph to the provided value. */
-export const SetGraphUIState = createAction(
+export const setGraphUIState = createAction(
   '[Graph] Set GraphUIState',
   (graph: GraphUIState) => ({
     graph,
   })
 );
 
-export const SetGraphAndHierarchy = createAction(
+export const setGraphAndHierarchy = createAction(
   '[Graph] Set GraphAndHierarchy',
   (graphAndHierarchy: GraphAndHierarchy) => ({
     graphAndHierarchy,
@@ -38,9 +38,9 @@ export const SetGraphAndHierarchy = createAction(
 );
 
 /** Represents the intent to set the name of the model. */
-export const SetGraphName = createAction(
+export const setGraphName = createAction(
   '[Graph] SetGraphName',
-  (graphName: string) => ({graphName})
+  (graphName: string) => ({ graphName })
 );
 
 /**
@@ -48,16 +48,16 @@ export const SetGraphName = createAction(
  * not trigger the load; rather it reports that loading was triggered and the
  * async handler has begun).
  */
-export const LoadGraphRequest = createAction(
+export const loadGraphRequest = createAction(
   '[Graph] LoadGraphRequest',
-  (graphUrl: string) => ({graphUrl})
+  (graphUrl: string) => ({ graphUrl })
 );
 
 /** A signal that loading a graph has succeeded. */
-export const LoadGraphSuccess = createAction('[Graph] LoadGraphSuccess');
+export const loadGraphSuccess = createAction('[Graph] LoadGraphSuccess');
 
 /** A signal that loading a graph has failed. */
-export const LoadGraphFailure = createAction(
+export const loadGraphFailure = createAction(
   '[Graph] LoadGraphFailure',
-  (exception: Error) => ({exception})
+  (exception: Error) => ({ exception })
 );
