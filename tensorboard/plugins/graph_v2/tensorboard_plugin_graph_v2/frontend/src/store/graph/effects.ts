@@ -32,6 +32,7 @@ import {
   GraphAndHierarchy,
 } from './legacy/loader';
 import { GraphUIState } from './types';
+import { Tracker } from './legacy/util';
 
 @Injectable()
 export class GraphV2Effects {
@@ -65,15 +66,15 @@ export class GraphV2Effects {
   );
 }
 
-export function getTracker() {
+export function getTracker(): Tracker {
   return {
-    setMessage: msg => {
+    setMessage: (msg: string) => {
       console.log(msg);
     },
-    updateProgress: value => {
+    updateProgress: (value: number) => {
       console.log(value);
     },
-    reportError: (msg: string, err) => {
+    reportError: (msg: string, err: Error) => {
       console.log(msg);
       console.log(err);
     },

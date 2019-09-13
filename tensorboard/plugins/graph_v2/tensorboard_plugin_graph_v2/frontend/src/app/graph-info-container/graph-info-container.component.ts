@@ -25,10 +25,10 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
     this.store.dispatch(action);
   }
 
-  _graphUrl(run, limitAttrSize, largeAttrsKey) {
+  _graphUrl(run: string, limitAttrSize: number, largeAttrsKey: string) {
     const params = new URLSearchParams({
       run,
-      limit_attr_size: limitAttrSize,
+      limit_attr_size: `${limitAttrSize}`,
       large_attrs_key: largeAttrsKey,
     });
     /*

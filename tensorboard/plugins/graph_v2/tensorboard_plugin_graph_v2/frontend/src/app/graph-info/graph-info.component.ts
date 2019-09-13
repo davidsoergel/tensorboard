@@ -19,8 +19,8 @@ export class GraphInfoComponent implements OnInit {
 
   constructor() {}
 
-  handleClick(component) {
-    console.log('click', component);
+  handleClick() {
+    console.log('click');
     this.clickHandler.emit();
   }
 
