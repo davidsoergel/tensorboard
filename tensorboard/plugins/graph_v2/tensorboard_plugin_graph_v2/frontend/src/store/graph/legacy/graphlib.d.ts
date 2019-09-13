@@ -22,7 +22,7 @@ limitations under the License.
  */
 
 declare module 'graphlib' {
-  interface GraphOptions {
+  export interface GraphOptions {
     compound?: boolean;
     name?: string;
     /**

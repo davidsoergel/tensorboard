@@ -17,26 +17,13 @@ limitations under the License.
 ///<reference path="./graphlib.d.ts" />
 import * as graphlib from 'graphlib';
 import {
-  createGraph,
-  createMetaedge,
-  createMetanode,
-  createSeriesNode,
-  FUNCTION_LIBRARY_NODE_PREFIX,
-  getHierarchicalPath,
-  getSeriesNodeName,
-  GraphType,
   GroupNode,
   hasSimilarDegreeSequence,
   Metaedge,
-  MetaedgeImpl,
   Metanode,
-  Node,
   NodeType,
   OpNode,
-  ROOT_NAME,
-  SeriesGroupingType,
   SeriesNode,
-  SlimGraph,
 } from './graph';
 import * as hierarchy from './hierarchy';
 
@@ -49,7 +36,10 @@ import * as hierarchy from './hierarchy';
  * @param verifyTemplate whether to run the template verification algorithm
  * @return a dict (template id => Array of node names)
  */
-export function detect(h, verifyTemplate): { [templateId: string]: string[] } {
+export function detect(
+  h: hierarchy.Hierarchy,
+  verifyTemplate: boolean
+): TemplateNodeIdsById {
   // In any particular subgraph, there are either
   // - leaf nodes (which do not have subgraph)
   // - metanode nodes - some of them have only one member (singular metanode)
@@ -65,12 +55,13 @@ export function detect(h, verifyTemplate): { [templateId: string]: string[] } {
   // Sort the templates by minimum level in the graph at which they appear,
   // as this leads to optimal setting of the colors of each template for
   // maximum differentiation.
-  return Object.keys(templates)
+  const result = Object.keys(templates)
     .sort(key => templates[key].level)
     .reduce((obj, key) => {
       obj[key] = templates[key];
       return obj;
-    }, {});
+    }, {} as TemplateNodeIdsById);
+  return result;
 }
 
 /**
@@ -94,6 +85,21 @@ function getSignature(metanode: any) {
   return props + ' [ops] ' + ops;
 }
 
+interface TemplateMetanodes {
+  level: number;
+  nodes: Metanode[];
+}
+interface TemplateMetanodesById {
+  [templateId: string]: TemplateMetanodes;
+}
+interface TemplateNodeIds {
+  level: number;
+  nodes: string[];
+}
+export interface TemplateNodeIdsById {
+  [templateId: string]: TemplateNodeIds;
+}
+
 /**
  * Generate a nearest neighbor hash of metanodes
  * based on depth, |V|, |E|, and opHistogram of their subgraph
@@ -103,30 +109,35 @@ function getSignature(metanode: any) {
  *   Object with min level of the template and an Array of tf.graph.Group]
  *   sort by ascending order of minimum depth at which metanode appears.
  */
-function clusterSimilarSubgraphs(h: hierarchy.Hierarchy) {
+function clusterSimilarSubgraphs(
+  h: hierarchy.Hierarchy
+): Array<[string, TemplateMetanodes]> {
   /** a dict from metanode.signature() => Array of tf.graph.Groups */
   const map = h.getNodeMap();
-  const hashDict = Object.keys(map).reduce((reduced: {}, name: string) => {
-    const node: OpNode | GroupNode = map[name];
-    if (node.type !== NodeType.META) {
+  const hashDict = Object.keys(map).reduce(
+    (reduced: TemplateMetanodesById, name: string) => {
+      const node: GroupNode | OpNode = map[name];
+      if (node.type !== NodeType.META) {
+        return reduced;
+      }
+      const levelOfMetaNode = name.split('/').length - 1;
+      const signature = getSignature(node);
+      const templateInfo = reduced[signature] || {
+        nodes: [],
+        level: levelOfMetaNode,
+      };
+      reduced[signature] = templateInfo;
+      templateInfo.nodes.push(node as Metanode);
+      if (templateInfo.level > levelOfMetaNode) {
+        templateInfo.level = levelOfMetaNode;
+      }
       return reduced;
-    }
-    const levelOfMetaNode = name.split('/').length - 1;
-    const signature = getSignature(node);
-    const templateInfo = reduced[signature] || {
-      nodes: [],
-      level: levelOfMetaNode,
-    };
-    reduced[signature] = templateInfo;
-    templateInfo.nodes.push(node);
-    if (templateInfo.level > levelOfMetaNode) {
-      templateInfo.level = levelOfMetaNode;
-    }
-    return reduced;
-  }, {});
+    },
+    {} as TemplateMetanodesById
+  );
 
   return Object.keys(hashDict)
-    .map(key => [key, hashDict[key]])
+    .map((key): [string, TemplateMetanodes] => [key, hashDict[key]])
     .filter(([_, subGraph]) => {
       const { nodes } = subGraph;
       if (nodes.length > 1) {
@@ -146,23 +157,26 @@ function clusterSimilarSubgraphs(h: hierarchy.Hierarchy) {
     .sort(([_, subGraph]) => {
       // sort by depth
       // (all members in the same nnGroup has equal depth)
-      return subGraph.nodes[0].depth;
+      return (subGraph.nodes[0] as Metanode).depth;
     });
 }
 
+interface Cluster {
+  metanode: Metanode;
+  members: string[];
+}
+
 function groupTemplateAndAssignId(
-  nnGroups,
-  verifyTemplate
-): { [templateId: string]: { level: number; nodes: string[] } } {
+  nnGroups: Array<[string, TemplateMetanodes]>,
+  verifyTemplate: boolean
+): TemplateNodeIdsById {
   // For each metanode, compare its subgraph (starting from shallower groups)
   // and assign template id.
-  const result: {
-    [templateId: string]: { level: number; nodes: string[] };
-  } = {};
+  const result: TemplateNodeIdsById = {};
   return nnGroups.reduce((templates, nnGroupPair) => {
     const signature = nnGroupPair[0],
       nnGroup = nnGroupPair[1].nodes,
-      clusters = [];
+      clusters: Cluster[] = [];
 
     nnGroup.forEach(metanode => {
       // check with each existing cluster
@@ -196,48 +210,55 @@ function groupTemplateAndAssignId(
   }, result);
 }
 
+
 function sortNodes(
   names: string[],
   graph: graphlib.Graph<Metanode | OpNode, Metaedge>,
   prefix: string
 ) {
   return names.sort((a, b) => {
-    let result = (graph.node(a) as OpNode).op.localeCompare(
-      (graph.node(b) as OpNode).op
-    );
+    const aSortKeys = [
+      (graph.node(a) as OpNode).op,
+      (graph.node(a) as Metanode).templateId,
+      graph.neighbors(a).length,
+      graph.predecessors(a).length,
+      graph.successors(a).length,
+      a.substr(prefix.length),
+    ];
 
-    if (result === 0) {
-      result = (graph.node(a) as Metanode).templateId.localeCompare(
-        (graph.node(b) as Metanode).templateId
-      );
+    const bSortKeys = [
+      (graph.node(b) as OpNode).op,
+      (graph.node(b) as Metanode).templateId,
+      graph.neighbors(b).length,
+      graph.predecessors(b).length,
+      graph.successors(b).length,
+      b.substr(prefix.length),
+    ];
+
+    for (let i = 0; i < aSortKeys.length; i++) {
+      const aKey = aSortKeys[i];
+      const bKey = bSortKeys[i];
+
+      if (aKey == null && bKey == null) {
+        continue;
+      }
+
+      let result = 0;
+      if (aKey == null) {
+        result = -1;
+      } else if (bKey == null) {
+        result = 1;
+      } else if (typeof aKey === 'number') {
+        result = (aKey as number) - (bKey as number);
+      } else {
+        result = (aKey as string).localeCompare(bKey as string);
+      }
+
+      if (result !== 0) {
+        return result;
+      }
     }
-
-    if (result === 0) {
-      result = graph
-        .neighbors(a)
-        .length.toString()
-        .localeCompare(graph.neighbors(b).length.toString());
-    }
-
-    if (result === 0) {
-      result = graph
-        .predecessors(a)
-        .length.toString()
-        .localeCompare(graph.predecessors(b).length.toString());
-    }
-
-    if (result === 0) {
-      result = graph
-        .successors(a)
-        .length.toString()
-        .localeCompare(graph.successors(b).length.toString());
-    }
-
-    if (result === 0) {
-      result = a.substr(prefix.length).localeCompare(b.substr(prefix.length));
-    }
-
-    return result;
+    return 0;
   });
 }
 
@@ -258,20 +279,20 @@ function isSimilarSubgraph(
   const g1prefix = g1.graph().name;
   const g2prefix = g2.graph().name;
 
-  const visited1 = {};
-  const visited2 = {};
-  const stack = [];
+  const visited1: { [key: string]: boolean } = {};
+  const visited2: { [key: string]: boolean } = {};
+  const stack: Array<{ n1: string; n2: string }> = [];
 
   /**
    * push sources or successors into the stack
    * if the visiting pattern has been similar.
    */
-  function stackPushIfNotDifferent(n1, n2) {
+  function stackPushIfNotDifferent(n1: string, n2: string) {
     const sub1 = n1.substr(g1prefix.length),
       sub2 = n2.substr(g2prefix.length);
 
     /* tslint:disable */
-    if (visited1[sub1] ^ visited2[sub2]) {
+    if (visited1[sub1] !== visited2[sub2]) {
       console.warn(
         'different visit pattern',
         '[' + g1prefix + ']',

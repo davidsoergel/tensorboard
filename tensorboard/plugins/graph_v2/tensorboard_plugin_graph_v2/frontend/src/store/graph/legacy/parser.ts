@@ -274,7 +274,9 @@ export function parseStatsPbTxt(input: ArrayBuffer): Promise<proto.StepStats> {
 }
 
 type PlainJSValue = PlainJSObject | string | number | boolean;
-interface PlainJSObject { [name: string]: PlainJSValue | PlainJSValue[] }
+interface PlainJSObject {
+  [name: string]: PlainJSValue | PlainJSValue[];
+}
 
 /**
  * Parses a ArrayBuffer of a proto txt file into javascript object.

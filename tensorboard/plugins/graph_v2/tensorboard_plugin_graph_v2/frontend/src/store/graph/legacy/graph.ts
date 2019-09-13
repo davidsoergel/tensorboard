@@ -233,7 +233,7 @@ export interface EllipsisNode extends Node {
    * Sets the number of nodes this ellipsis represents and changes the node
    * name accordingly.
    */
-  setNumMoreNodes(numNodes: number);
+  setNumMoreNodes(numNodes: number): void;
 }
 
 export interface GroupNode extends Node {
@@ -856,7 +856,7 @@ class SeriesNodeImpl implements SeriesNode {
 function extractOutputShapes(
   attr: Array<{ key: string; value: any }>
 ): { [key: string]: TensorShape } {
-  const result = null;
+  const result: { [key: string]: TensorShape } = null;
   // We don't know anything about the output tensors.
   if (!attr) {
     return null;
@@ -870,7 +870,7 @@ function extractOutputShapes(
       }
 
       // Map all output tensors into array of numbers denoting their shape.
-      const result = value.list.shape.map(shape => {
+      const result = value.list.shape.map((shape: any) => {
         if (shape.unknown_rank) {
           // This output tensor is of unknown rank. We don't know if it is a
           // scalar, or a tensor, or of what shape it is.
@@ -885,7 +885,7 @@ function extractOutputShapes(
         }
         // This output tensor has a known rank. Map each dimension size
         // into a number.
-        return shape.dim.map(dim => {
+        return shape.dim.map((dim: any) => {
           // Size can be -1 if this particular dimension is unknown.
           return dim.size;
         });
@@ -1069,7 +1069,7 @@ export function buildGraph(
         const opNodes = new Array<OpNode>(rawNodes.length);
         let index = 0;
 
-        const processRawNode = rawNode => {
+        const processRawNode = (rawNode: proto.NodeDef) => {
           const opNode = new OpNodeImpl(rawNode);
           if (isInEmbeddedPred(opNode)) {
             embeddingNodeNames.push(opNode.name);
@@ -1116,7 +1116,7 @@ export function buildGraph(
             // Makes an OpNode out of either an input_arg of a library
             // function.
             let currentInputIndex = 0;
-            const processInput = arg => {
+            const processInput = (arg: proto.ArgDef) => {
               const opNode = processRawNode({
                 name: functionNodeName + NAMESPACE_DELIM + arg.name,
                 input: [],
@@ -1139,12 +1139,14 @@ export function buildGraph(
             // pbtxt configuration language is not rich enough to
             // differentiate between an array with 1 item vs 1 object
             // property.
-            if (func.signature.input_arg.name) {
+            if ((func.signature.input_arg as any).name) {
               // There is only 1 input arg.
-              processInput(func.signature.input_arg);
+              processInput(func.signature.input_arg as proto.ArgDef);
             } else {
               // There are several input args.
-              func.signature.input_arg.forEach(processInput);
+              (func.signature.input_arg as proto.ArgDef[]).forEach(
+                processInput
+              );
             }
           }
 
@@ -1153,22 +1155,24 @@ export function buildGraph(
           // input_args, the output_args are already defined within the
           // node_defs of the library function.
           let currentOutputIndex = 0;
-          const outputArgNames = {};
+          const outputArgNames: { [key: string]: number } = {};
 
           // If the function has outputs, make nodes out of them.
           if (func.signature.output_arg) {
-            const processOutput = arg => {
+            const processOutput = (arg: proto.ArgDef) => {
               outputArgNames[
                 functionNodeName + NAMESPACE_DELIM + arg.name
               ] = currentOutputIndex;
               currentOutputIndex++;
             };
-            if (func.signature.output_arg.name) {
+            if ((func.signature.output_arg as any).name) {
               // There is only 1 output arg.
-              processOutput(func.signature.output_arg);
+              processOutput(func.signature.output_arg as proto.ArgDef);
             } else {
               // There are several output args.
-              func.signature.output_arg.forEach(processOutput);
+              (func.signature.output_arg as proto.ArgDef[]).forEach(
+                processOutput
+              );
             }
           }
 
@@ -1303,7 +1307,7 @@ export function buildGraph(
  */
 export function createGraph<N, E>(
   name: string,
-  type,
+  type: string | number,
   opt?: graphlib.GraphOptions
 ): graphlib.Graph<N, E> {
   const graphOptions = opt || {};

@@ -69,7 +69,7 @@ export interface LibraryFunctionData {
 export interface Hierarchy {
   root: Metanode;
   libraryFunctions: { [key: string]: LibraryFunctionData };
-  templates: { [templateId: string]: string[] };
+  templates: template.TemplateNodeIdsById;
   /** List of all device names */
   devices: string[];
   /** List of all XLA cluster names */
@@ -97,7 +97,7 @@ export interface Hierarchy {
 class HierarchyImpl implements Hierarchy {
   root: Metanode;
   libraryFunctions: { [key: string]: LibraryFunctionData };
-  templates: { [templateId: string]: string[] };
+  templates: template.TemplateNodeIdsById; // { [templateId: string]: string[] };
   private index: { [nodeName: string]: GroupNode | OpNode };
   devices: string[];
   xlaClusters: string[];
@@ -397,7 +397,8 @@ class HierarchyImpl implements Hierarchy {
     );
 
     // Produce an ordering by traversing the graph breadth first.
-    const ordering = (this.orderings[nodeName] = {});
+    this.orderings[nodeName] = {};
+    const ordering = this.orderings[nodeName];
     let index = 0;
     while (queue.length) {
       const childName = queue.shift();
@@ -490,8 +491,8 @@ export function buildHierarchy(
       20,
       () => {
         // Get all the possible device and XLA cluster names.
-        const deviceNames = {};
-        const xlaClusterNames = {};
+        const deviceNames: { [key: string]: boolean } = {};
+        const xlaClusterNames: { [key: string]: boolean } = {};
         Object.entries(graph.nodes).forEach(([nodeName, node]) => {
           if (node.device) {
             deviceNames[node.device] = true;
@@ -555,8 +556,8 @@ export function buildHierarchy(
 
 export function joinAndAggregateStats(h: Hierarchy, stats: proto.StepStats) {
   // Get all the possible device and XLA cluster names.
-  const deviceNames = {};
-  const xlaClusterNames = {};
+  const deviceNames: { [key: string]: boolean } = {};
+  const xlaClusterNames: { [key: string]: boolean } = {};
   h.root.leaves().forEach(nodeName => {
     const leaf = h.node(nodeName) as OpNode;
     if (leaf.device != null) {
@@ -659,7 +660,7 @@ export function getIncompatibleOps(
 function addNodes(h: Hierarchy, graph: SlimGraph) {
   // Maps the op of a node to names of nodes that have the op. Used to populate
   // the libraryFunctions field of the hierarchy.
-  const opToNode = {};
+  const opToNode: { [key: string]: OpNode[] } = {};
 
   Object.entries(graph.nodes).forEach(([nodeName, node]) => {
     const path = getHierarchicalPath(node.name);
@@ -1186,7 +1187,7 @@ function detectSeriesAnywhereInNodeName(
             graphOptions
           );
         }
-        forwardDict[seriesName].ids.push(id);
+        forwardDict[seriesName].ids.push(+id);
         reverseDict[name] = reverseDict[name] || [];
         reverseDict[name].push([seriesName, id]);
 

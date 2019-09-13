@@ -73,8 +73,8 @@ export interface ArgDef {
  */
 export interface OpDef {
   name: string;
-  input_arg: ArgDef[];
-  output_arg: ArgDef[];
+  input_arg: ArgDef | ArgDef[];
+  output_arg: ArgDef | ArgDef[];
 }
 
 /**
