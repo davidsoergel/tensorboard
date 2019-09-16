@@ -16,18 +16,27 @@
  */
 
 import { createReducer, on } from '@ngrx/store';
-import { setGraphAndHierarchy, setGraphName } from './actions';
+import {
+  setLegacyGraphAndHierarchy,
+  setGraphName,
+  expandNode,
+  setGraph,
+} from './actions';
 import { GraphAndHierarchy } from './legacy/loader';
 import { GraphUIState, INITIAL_GRAPH_UI_STATE } from './types';
+import { hdagNodePath, HdagVisibleNode, HdagNode } from './hdag';
 
 export const graphReducer = createReducer(
   INITIAL_GRAPH_UI_STATE,
   on(setGraphName, (state, { graphName }) =>
     applySetGraphName(state, graphName)
   ),
-  on(setGraphAndHierarchy, (state, { graphAndHierarchy }) =>
-    applySetGraphAndHierarchy(state, graphAndHierarchy)
-  )
+  on(setLegacyGraphAndHierarchy, (state, { legacyGraphAndHierarchy }) =>
+    applySetLegacyGraphAndHierarchy(state, legacyGraphAndHierarchy)
+  ),
+
+  on(setGraph, (state, { graph }) => applySetGraph(state, graph)),
+  on(expandNode, (state, { path }) => applyExpandNode(state, path))
 );
 
 export function applySetGraphName(
@@ -37,9 +46,30 @@ export function applySetGraphName(
   return { ...state, graphName };
 }
 
-export function applySetGraphAndHierarchy(
+export function applySetGraph(
   state: GraphUIState,
-  graphAndHierarchy: GraphAndHierarchy
+  graph: HdagNode
 ): GraphUIState {
-  return { ...state, graphAndHierarchy };
+  const visibleGraph: HdagVisibleNode = { hdagNode: graph, children: {} };
+  return { ...state, graph, visibleGraph };
+}
+
+export function applySetLegacyGraphAndHierarchy(
+  state: GraphUIState,
+  legacyGraphAndHierarchy: GraphAndHierarchy
+): GraphUIState {
+  return { ...state, legacyGraphAndHierarchy };
+}
+
+export function applyExpandNode(
+  state: GraphUIState,
+  path: hdagNodePath
+): GraphUIState {
+  /*
+  const node: findNode(state.graph, path);
+  const visibleNode: findVisibleNode(state.visibleGraph, path);
+  const visibleGraph: HdagVisibleNode = applyUpdateVisibleNode(state.visibleGraph, visibleNode, );
+  return {...state, visibleGraph};
+  */
+  return state;
 }

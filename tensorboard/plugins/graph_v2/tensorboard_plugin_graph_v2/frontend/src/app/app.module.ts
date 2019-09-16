@@ -14,14 +14,19 @@ import { GraphInfoComponent } from './graph-info/graph-info.component';
 
 import { storeFreeze } from 'ngrx-store-freeze';
 import { GraphV2PluginState } from 'src/store/types';
-import { MetanodeComponent } from './metanode/metanode.component';
+import { VisibleNodeComponent } from './visiblenode/visiblenode.component';
 
 export const metaReducers: Array<
   MetaReducer<GraphV2PluginState>
 > = !environment.production ? [storeFreeze] : [];
 
 @NgModule({
-  declarations: [AppComponent, GraphInfoComponent, GraphInfoContainerComponent, MetanodeComponent],
+  declarations: [
+    AppComponent,
+    GraphInfoComponent,
+    GraphInfoContainerComponent,
+    VisibleNodeComponent,
+  ],
   imports: [
     BrowserModule,
     StoreModule.forRoot(graphV2PluginReducer, {

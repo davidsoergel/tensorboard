@@ -57,10 +57,13 @@ export function detect(
   // maximum differentiation.
   const result = Object.keys(templates)
     .sort(key => templates[key].level)
-    .reduce((obj, key) => {
-      obj[key] = templates[key];
-      return obj;
-    }, {} as TemplateNodeIdsById);
+    .reduce(
+      (obj, key) => {
+        obj[key] = templates[key];
+        return obj;
+      },
+      {} as TemplateNodeIdsById
+    );
   return result;
 }
 
@@ -209,7 +212,6 @@ function groupTemplateAndAssignId(
     return templates;
   }, result);
 }
-
 
 function sortNodes(
   names: string[],

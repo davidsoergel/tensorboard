@@ -1,19 +1,19 @@
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MetanodeComponent } from './metanode.component';
+import { VisibleNodeComponent } from './visiblenode.component';
 
-describe('MetanodeComponent', () => {
-  let component: MetanodeComponent;
-  let fixture: ComponentFixture<MetanodeComponent>;
+describe('VisiblenodeComponent', () => {
+  let component: VisibleNodeComponent;
+  let fixture: ComponentFixture<VisibleNodeComponent>;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [MetanodeComponent],
+      declarations: [VisibleNodeComponent],
     }).compileComponents();
   }));
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(MetanodeComponent);
+    fixture = TestBed.createComponent(VisibleNodeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

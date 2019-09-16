@@ -18,6 +18,7 @@
 import { createAction } from '@ngrx/store';
 import { GraphAndHierarchy } from './legacy/loader';
 import { GraphUIState } from './types';
+import { hdagNodePath, HdagNode } from './hdag';
 
 /** Represents the intent to clear the graph. */
 export const clearGraph = createAction('[Graph] Clear Graph');
@@ -30,10 +31,17 @@ export const setGraphUIState = createAction(
   })
 );
 
-export const setGraphAndHierarchy = createAction(
-  '[Graph] Set GraphAndHierarchy',
-  (graphAndHierarchy: GraphAndHierarchy) => ({
-    graphAndHierarchy,
+export const setLegacyGraphAndHierarchy = createAction(
+  '[Graph] Set LegacyGraphAndHierarchy',
+  (legacyGraphAndHierarchy: GraphAndHierarchy) => ({
+    legacyGraphAndHierarchy,
+  })
+);
+
+export const setGraph = createAction(
+  '[Graph] Set Graph',
+  (graph: HdagNode) => ({
+    graph,
   })
 );
 
@@ -53,6 +61,10 @@ export const loadGraphRequest = createAction(
   (graphUrl: string) => ({ graphUrl })
 );
 
+export const loadTestGraphRequest = createAction(
+  '[Graph] LoadTestGraphRequest'
+);
+
 /** A signal that loading a graph has succeeded. */
 export const loadGraphSuccess = createAction('[Graph] LoadGraphSuccess');
 
@@ -60,4 +72,20 @@ export const loadGraphSuccess = createAction('[Graph] LoadGraphSuccess');
 export const loadGraphFailure = createAction(
   '[Graph] LoadGraphFailure',
   (exception: Error) => ({ exception })
+);
+
+export const layoutGraph = createAction('[Graph] Layout Graph');
+
+export const expandNode = createAction(
+  '[Graph] Expand Node',
+  (path: hdagNodePath) => ({
+    path,
+  })
+);
+
+export const collapseNode = createAction(
+  '[Graph] Collapse Node',
+  (path: hdagNodePath) => ({
+    path,
+  })
 );

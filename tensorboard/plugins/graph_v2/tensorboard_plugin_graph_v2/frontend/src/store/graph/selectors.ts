@@ -22,6 +22,7 @@ import {
 } from '@ngrx/store';
 import { GraphUIState } from './types';
 import { GraphAndHierarchy } from './legacy/loader';
+import { HdagNode, HdagVisibleNode } from './hdag';
 
 export const selectGraphState: MemoizedSelector<
   object,
@@ -33,7 +34,23 @@ export const selectGraphName: MemoizedSelector<object, string> = createSelector(
   (graph: GraphUIState) => graph.graphName
 );
 
-export const selectGraphAndHierarchy: MemoizedSelector<object, GraphAndHierarchy> = createSelector(
+export const selectGraph: MemoizedSelector<object, HdagNode> = createSelector(
   selectGraphState,
-  (graph: GraphUIState) => graph.graphAndHierarchy
+  (graph: GraphUIState) => graph.graph
+);
+
+export const selectVisibleGraph: MemoizedSelector<
+  object,
+  HdagVisibleNode
+> = createSelector(
+  selectGraphState,
+  (graph: GraphUIState) => graph.visibleGraph
+);
+
+export const selectLegacyGraphAndHierarchy: MemoizedSelector<
+  object,
+  GraphAndHierarchy
+> = createSelector(
+  selectGraphState,
+  (graph: GraphUIState) => graph.legacyGraphAndHierarchy
 );
