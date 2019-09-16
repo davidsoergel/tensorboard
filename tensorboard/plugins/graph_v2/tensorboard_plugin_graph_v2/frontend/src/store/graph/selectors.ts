@@ -21,6 +21,7 @@ import {
   MemoizedSelector,
 } from '@ngrx/store';
 import { GraphUIState } from './types';
+import { GraphAndHierarchy } from './legacy/loader';
 
 export const selectGraphState: MemoizedSelector<
   object,
@@ -30,4 +31,9 @@ export const selectGraphState: MemoizedSelector<
 export const selectGraphName: MemoizedSelector<object, string> = createSelector(
   selectGraphState,
   (graph: GraphUIState) => graph.graphName
+);
+
+export const selectGraphAndHierarchy: MemoizedSelector<object, GraphAndHierarchy> = createSelector(
+  selectGraphState,
+  (graph: GraphUIState) => graph.graphAndHierarchy
 );

@@ -1,2 +1,5 @@
-<h1>Graph name: {{ graphName$ | async }}</h1>
-<button (click)="handleClick()">Rename</button>
+<h1>Nodes: {{ nodes$ | async }}, Edges: {{ ((graph$ | async) || {edges: []}).edges.length }} </h1>
+<button (click)="handleClick()">Load</button>
+<app-metanode
+  [metanode$]="metanode$"
+></app-metanode>

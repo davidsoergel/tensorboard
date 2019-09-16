@@ -6,7 +6,10 @@ import {
   OnInit,
   Output,
 } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { SlimGraph, Metanode } from 'src/store/graph/legacy/graph';
+import { Hierarchy } from 'src/store/graph/legacy/hierarchy';
+import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-graph-info',
@@ -15,6 +18,11 @@ import { Observable } from 'rxjs';
 })
 export class GraphInfoComponent implements OnInit {
   @Input() graphName$: Observable<string>;
+  @Input() graph$: Observable<SlimGraph>;
+  @Input() hierarchy$: Observable<Hierarchy>;
+  metanode$: Observable<Metanode>;
+  nodes$: Observable<number>;
+
   @Output() clickHandler = new EventEmitter<void>();
 
   constructor() {}
@@ -24,5 +32,13 @@ export class GraphInfoComponent implements OnInit {
     this.clickHandler.emit();
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.metanode$ = this.hierarchy$.pipe(switchMap((h)=>{
+      if(h == null) { return of(null); } return of(h.root); }));
+      this.nodes$ = this.graph$.pipe(switchMap(
+        (g)=>{
+        if(g == null) { return of(0); } 
+        return of(Object.keys(g.nodes).length);
+      }))
+  }
 }

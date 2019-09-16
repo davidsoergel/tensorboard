@@ -2,8 +2,11 @@ import { Component, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { select, Store } from '@ngrx/store';
 import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { loadGraphRequest, selectGraphName } from 'src/store/graph';
+import { loadGraphRequest, selectGraphName, selectGraphAndHierarchy } from 'src/store/graph';
 import { GraphV2PluginState } from 'src/store/types';
+import { GraphAndHierarchy } from 'src/store/graph/legacy/loader';
+import { Hierarchy } from 'src/store/graph/legacy/hierarchy';
+import { SlimGraph } from 'src/store/graph/legacy/graph';
 
 @Component({
   selector: 'app-graph-info-container',
@@ -11,7 +14,26 @@ import { GraphV2PluginState } from 'src/store/types';
   styleUrls: ['./graph-info-container.component.scss'],
 })
 export class GraphInfoContainerComponent implements OnInit, OnChanges {
-  graphName$: Observable<string>;
+  graphName$ = this.store.pipe(
+    select(selectGraphName)
+  );
+  graph$ =  this.store.pipe(
+    select(selectGraphAndHierarchy),
+    switchMap((gh)=>{
+      if(gh == null) { return of(null); }
+      console.log("LOADED GRAPH");
+      console.log(gh.graph);
+      return of(gh.graph); })
+  );
+  hierarchy$ = this.store.pipe(
+    select(selectGraphAndHierarchy),
+    switchMap((gh)=>{
+      if(gh == null) { return of(null); }
+      console.log("LOADED HIERARCHY");
+      console.log(gh.graphHierarchy);
+      return of(gh.graphHierarchy);
+    })
+  );
 
   onClick() {
     // const action = SetGraphName('Hello world');
@@ -44,14 +66,6 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
   constructor(private store: Store<GraphV2PluginState>) {}
 
   ngOnInit() {
-    console.log(this.store);
-    this.graphName$ = this.store.pipe(
-      switchMap(a => {
-        console.log(a);
-        return of(a);
-      }),
-      select(selectGraphName)
-    );
   }
 
   ngOnChanges(changes: SimpleChanges): void {

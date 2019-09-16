@@ -1,0 +1,6 @@
+<p>{{ name$ | async }}</p>
+<ul>
+    <li *ngFor="let childName of childNames$ | async">
+    {{ childName }}
+    </li>
+</ul>
