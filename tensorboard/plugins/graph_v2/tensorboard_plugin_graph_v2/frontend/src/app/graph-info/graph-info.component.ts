@@ -6,11 +6,7 @@ import {
   OnInit,
   Output,
 } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { SlimGraph, Metanode } from 'src/store/graph/legacy/graph';
-import { Hierarchy } from 'src/store/graph/legacy/hierarchy';
-import { switchMap } from 'rxjs/operators';
-import { HdagNode, HdagVisibleNode } from 'src/store/graph/hdag';
+import { HdagEdge } from 'src/store/graph/hdag';
 
 @Component({
   selector: 'app-graph-info',
@@ -18,7 +14,8 @@ import { HdagNode, HdagVisibleNode } from 'src/store/graph/hdag';
   styleUrls: ['./graph-info.component.scss'],
 })
 export class GraphInfoComponent implements OnInit {
-  @Input() graphName$: Observable<string>;
+  @Input() graphName: string;
+  @Input() visibleEdges: HdagEdge[];
   // @Input() graph$: Observable<HdagNode>;
   // @Input() visibleGraph$: Observable<HdagVisibleNode>;
   // @Input() graph$: Observable<SlimGraph>;
@@ -31,7 +28,6 @@ export class GraphInfoComponent implements OnInit {
   constructor() {}
 
   handleClick() {
-    console.log('click');
     this.clickHandler.emit();
   }
 

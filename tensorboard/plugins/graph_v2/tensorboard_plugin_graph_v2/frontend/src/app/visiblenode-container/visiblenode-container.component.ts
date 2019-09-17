@@ -28,7 +28,6 @@ export class VisiblenodeContainerComponent implements OnInit, OnChanges {
   }
 
   onClick() {
-    console.log('toggle');
     const action = toggleNode(this.path);
     this.store.dispatch(action);
   }

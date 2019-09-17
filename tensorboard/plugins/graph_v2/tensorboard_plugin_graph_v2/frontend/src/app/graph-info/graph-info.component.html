@@ -1,5 +1,13 @@
 <button (click)="handleClick()">Load</button>
-<h1>{{graphName$ | async}}</h1>
+<h1>{{graphName}}</h1>
+
+<h2>Visible Nodes:</h2>
 <app-visiblenode-container
   [path]="[]"
 ></app-visiblenode-container>
+<h2>Visible Edges:</h2>
+<ul>
+<li *ngFor="let edge of visibleEdges">
+  {{edge.source}} -> {{edge.target}}
+</li>
+</ul>

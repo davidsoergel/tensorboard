@@ -1,4 +1,5 @@
 <app-graph-info
-  [graphName$]="graphName$"
+  [graphName]="graphName$ | async"
+  [visibleEdges]="visibleEdges$ | async"
   (clickHandler)="onClick($event)"
 ></app-graph-info>

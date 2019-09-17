@@ -22,7 +22,13 @@ import {
 } from '@ngrx/store';
 import { GraphUIState } from './types';
 import { GraphAndHierarchy } from './legacy/loader';
-import { HdagNode, HdagVisibleNode, HdagPath, findVisibleNode } from './hdag';
+import {
+  HdagNode,
+  HdagVisibleNode,
+  HdagPath,
+  findVisibleNode,
+  visibleEdges,
+} from './hdag';
 
 export const selectGraphState = createFeatureSelector<GraphUIState>('graph');
 
@@ -51,3 +57,8 @@ export const selectVisibleNode = (path: HdagPath) =>
     selectGraphState,
     (graph: GraphUIState) => findVisibleNode(graph.visibleGraph, path)
   );
+
+export const selectVisibleEdges = createSelector(
+  selectGraphState,
+  (graph: GraphUIState) => visibleEdges(graph.visibleGraph)
+);

@@ -26,7 +26,6 @@ export class VisibleNodeComponent implements OnInit, OnChanges {
   ngOnInit() {}
 
   handleClick() {
-    console.log('click');
     this.clickHandler.emit();
   }
 
@@ -34,7 +33,6 @@ export class VisibleNodeComponent implements OnInit, OnChanges {
     console.log(changes);
 
     if (this.visibleNode == null) {
-      console.log('visiblenode is null');
       this.childPaths = [];
     } else {
       this.childPaths = Object.values(this.visibleNode.children).map(

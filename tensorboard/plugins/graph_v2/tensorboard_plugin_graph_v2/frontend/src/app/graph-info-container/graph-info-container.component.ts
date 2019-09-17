@@ -9,6 +9,7 @@ import {
   loadTestGraphRequest,
   selectGraph,
   selectVisibleGraph,
+  selectVisibleEdges,
 } from 'src/store/graph';
 import { GraphV2PluginState } from 'src/store/types';
 import { GraphAndHierarchy } from 'src/store/graph/legacy/loader';
@@ -22,6 +23,9 @@ import { SlimGraph } from 'src/store/graph/legacy/graph';
 })
 export class GraphInfoContainerComponent implements OnInit, OnChanges {
   graphName$ = this.store.pipe(select(selectGraphName));
+
+  // TODO(soergel): this probably fires on every update
+  visibleEdges$ = this.store.pipe(select(selectVisibleEdges));
   /*
   legacyGraph$ = this.store.pipe(
     select(selectLegacyGraphAndHierarchy),
@@ -58,8 +62,6 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
     const action = loadTestGraphRequest();
     //      this._graphUrl('1-learning_rate', 100, 'aoeu')
     //    );
-    console.log(`Dispatching:`);
-    console.log(action);
     this.store.dispatch(action);
   }
 

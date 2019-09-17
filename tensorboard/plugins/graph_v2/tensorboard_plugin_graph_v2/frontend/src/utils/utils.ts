@@ -1,5 +1,5 @@
 export function flatten<T>(x: T[][]): T[] {
-  return x.reduce((a, b) => a.concat(b));
+  return x.reduce((a, b) => a.concat(b), []);
 }
 
 export function isArrayPrefix<T>(prefix: T[], path: T[]) {

@@ -70,7 +70,6 @@ function applySetGraph(state: GraphUIState, graph: HdagRoot): GraphUIState {
     hdagNode: graph,
     children: visibleChildren,
   };
-  console.log('set graph.');
   return { ...state, graph, visibleGraph };
 }
 

@@ -49,7 +49,6 @@ export interface HdagRoot extends HdagNode {
 }
 
 export function findNode(root: HdagRoot, path: HdagPath): HdagNode {
-  console.log('Finding node', path);
   let trav: HdagNode = root;
   for (const pathElement of path) {
     if (trav.children != null) {
@@ -58,7 +57,6 @@ export function findNode(root: HdagRoot, path: HdagPath): HdagNode {
       return null;
     }
   }
-  console.log('found', trav);
   return trav;
 }
 
@@ -80,12 +78,16 @@ export function hasVisibleChildren(node: HdagVisibleNode): boolean {
 // TODO(soergel): can we update only the changed edges instead of all of them?
 export function visibleEdges(visibleRoot: HdagVisibleRoot): HdagEdge[] {
   const result: HdagEdge[] = [];
+  console.log('finding visible edges');
+  if (visibleRoot == null) {
+    return [];
+  }
   const visibleTargetFinder = getVisibleTargetFinder(visibleRoot);
   for (const source of getVisibleNodes(visibleRoot)) {
     const visibleEdges = hasVisibleChildren(source)
       ? explicitOutboundEdges(source.hdagNode)
       : explicitAndDeepOutboundEdges(source.hdagNode);
-
+    console.log(visibleEdges);
     result.push(...visibleEdges.map(visibleTargetFinder));
   }
   return result;
@@ -97,7 +99,6 @@ export function findVisibleNode(
 ): HdagVisibleNode {
   let trav: HdagVisibleNode = visibleRoot;
   for (const pathElement of path) {
-    console.log(pathElement, trav);
     if (hasVisibleChildren(trav)) {
       trav = trav.children[pathElement];
     } else {
@@ -112,7 +113,6 @@ export function applyUpdateVisibleNode(
   visibleNode: HdagVisibleNode
 ): HdagVisibleRoot {
   const path = visibleNode.hdagNode.path;
-  console.log('Updating visible node', path);
   let trav: HdagVisibleNode = visibleRoot;
   const ancestors: HdagVisibleNode[] = [visibleRoot];
   for (const pathElement of path) {
@@ -127,7 +127,6 @@ export function applyUpdateVisibleNode(
     updatedChildren[pathElement] = updated;
     updated = { ...toUpdate, children: updatedChildren };
   }
-  console.log('Updated root', updated);
 
   return updated as HdagVisibleRoot;
 }
@@ -173,7 +172,9 @@ function deepOutboundEdges(source: HdagNode): HdagEdge[] {
       explicitAndDeepOutboundEdges(child)
     )
   );
-  return childOutboundEdges.filter(edge => isOutboundFrom(source, edge));
+  return childOutboundEdges
+    .filter(edge => isOutboundFrom(source, edge))
+    .map(edge => ({ source: source.path, target: edge.target }));
 }
 
 /**
