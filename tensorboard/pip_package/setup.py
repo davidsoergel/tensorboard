@@ -60,6 +60,7 @@ setup(
         'console_scripts': CONSOLE_SCRIPTS,
         'tensorboard_plugins': [
             'projector = tensorboard.plugins.projector.projector_plugin:ProjectorPlugin',
+            'graph_v2 = tensorboard.plugins.graph_v2.graph_v2_plugin:GraphV2Plugin',
         ],
     },
     package_data={
@@ -73,6 +74,11 @@ setup(
         'tensorboard.plugins.projector': [
             'tf_projector_plugin/index.js',
             'tf_projector_plugin/projector_binary.html',
+        ],
+        # Must keep this in sync with tf_graph_v2_plugin:graph_v2_assets
+        'tensorboard.plugins.projector': [
+            'tf_graph_v2_plugin/index.js',
+            'tf_graph_v2_plugin/graph_v2_binary.html',
         ],
     },
     # Disallow python 3.0 and 3.1 which lack a 'futures' module (see above).

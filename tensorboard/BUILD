@@ -216,6 +216,7 @@ py_library(
     name = "dynamic_plugins",
     deps = [
         "//tensorboard/plugins/projector:projector_plugin",
+        "//tensorboard/plugins/graph_v2:graph_v2_plugin",
     ],
 )
 
