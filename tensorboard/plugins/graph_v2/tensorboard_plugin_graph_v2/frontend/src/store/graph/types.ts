@@ -16,7 +16,7 @@
  */
 
 import { GraphAndHierarchy } from './legacy/loader';
-import { HdagNode, HdagVisibleNode } from './hdag';
+import { HdagNode, HdagVisibleNode, HdagRoot, HdagVisibleRoot } from './hdag';
 
 export interface GraphUIState {
   // TODO(soergel): this is a stub
@@ -24,8 +24,8 @@ export interface GraphUIState {
   legacyGraphAndHierarchy: GraphAndHierarchy; // try using the legacy representation for now
   // graph: ...
   // layout: ...
-  graph: HdagNode;
-  visibleGraph: HdagVisibleNode;
+  graph: HdagRoot;
+  visibleGraph: HdagVisibleRoot;
 }
 
 /** Default values for the CanvasWithLayout. */

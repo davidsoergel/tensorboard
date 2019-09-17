@@ -1,5 +1,5 @@
-<h1>Nodes: {{ nodes$ | async }}, Edges: {{ ((graph$ | async) || {edges: []}).edges.length }} </h1>
 <button (click)="handleClick()">Load</button>
-<app-metanode
-  [metanode$]="metanode$"
-></app-metanode>
+<h1>{{graphName$ | async}}</h1>
+<app-visiblenode-container
+  [path]="[]"
+></app-visiblenode-container>

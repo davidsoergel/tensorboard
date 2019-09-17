@@ -1,3 +1,5 @@
+import { isArrayPrefix, flatten } from 'src/utils/utils';
+
 /**
  * "Hdag" means "Hierarchical Dag", i.e., a DAG where the nodes may be
  * hierarchically grouped.
@@ -25,21 +27,39 @@
  * descendants of the visible nodes.
  */
 
-export type hdagNodePath = string[];
+export type HdagPath = string[];
 
 export interface HdagEdge {
-  source: hdagNodePath;
-  target: hdagNodePath;
+  source: HdagPath;
+  target: HdagPath;
 }
 
 export interface HdagNode {
-  path: hdagNodePath; // must match the path via child links
+  path: HdagPath; // must match the path via child links
   children: { [pathElement: string]: HdagNode };
 
   // One could argue that only leaves can have outbound edges, but here, for
   // greater generality/simplicity, we allow intermediate nodes to have outbound
   // edges that do not originate from a descendant.
-  outboundEdges: hdagNodePath[];
+  outboundEdges: HdagPath[];
+}
+
+export interface HdagRoot extends HdagNode {
+  path: [];
+}
+
+export function findNode(root: HdagRoot, path: HdagPath): HdagNode {
+  console.log('Finding node', path);
+  let trav: HdagNode = root;
+  for (const pathElement of path) {
+    if (trav.children != null) {
+      trav = trav.children[pathElement];
+    } else {
+      return null;
+    }
+  }
+  console.log('found', trav);
+  return trav;
 }
 
 export interface HdagVisibleNode {
@@ -49,11 +69,16 @@ export interface HdagVisibleNode {
   hdagNode: HdagNode;
 }
 
-function hasVisibleChildren(node: HdagVisibleNode): boolean {
-  return Object.entries(node.children).length === 0;
+export interface HdagVisibleRoot extends HdagVisibleNode {
+  hdagNode: HdagRoot;
 }
 
-function visibleEdges(visibleRoot: HdagVisibleNode): HdagEdge[] {
+export function hasVisibleChildren(node: HdagVisibleNode): boolean {
+  return Object.entries(node.children).length !== 0;
+}
+
+// TODO(soergel): can we update only the changed edges instead of all of them?
+export function visibleEdges(visibleRoot: HdagVisibleRoot): HdagEdge[] {
   const result: HdagEdge[] = [];
   const visibleTargetFinder = getVisibleTargetFinder(visibleRoot);
   for (const source of getVisibleNodes(visibleRoot)) {
@@ -66,11 +91,52 @@ function visibleEdges(visibleRoot: HdagVisibleNode): HdagEdge[] {
   return result;
 }
 
+export function findVisibleNode(
+  visibleRoot: HdagVisibleRoot,
+  path: HdagPath
+): HdagVisibleNode {
+  let trav: HdagVisibleNode = visibleRoot;
+  for (const pathElement of path) {
+    console.log(pathElement, trav);
+    if (hasVisibleChildren(trav)) {
+      trav = trav.children[pathElement];
+    } else {
+      return null;
+    }
+  }
+  return trav;
+}
+
+export function applyUpdateVisibleNode(
+  visibleRoot: HdagVisibleRoot,
+  visibleNode: HdagVisibleNode
+): HdagVisibleRoot {
+  const path = visibleNode.hdagNode.path;
+  console.log('Updating visible node', path);
+  let trav: HdagVisibleNode = visibleRoot;
+  const ancestors: HdagVisibleNode[] = [visibleRoot];
+  for (const pathElement of path) {
+    trav = trav.children[pathElement]; // TODO(soergel) handle error if absent
+    ancestors.push(trav);
+  }
+  let updated = visibleNode;
+  ancestors.pop(); // throw away the old leaf
+  for (const pathElement of path.reverse()) {
+    const toUpdate = ancestors.pop();
+    const updatedChildren = { ...toUpdate.children };
+    updatedChildren[pathElement] = updated;
+    updated = { ...toUpdate, children: updatedChildren };
+  }
+  console.log('Updated root', updated);
+
+  return updated as HdagVisibleRoot;
+}
+
 function getVisibleTargetFinder(
-  visibleRoot: HdagVisibleNode
+  visibleRoot: HdagVisibleRoot
 ): (raw: HdagEdge) => HdagEdge {
   return (raw: HdagEdge): HdagEdge => {
-    let visibleTarget = visibleRoot;
+    let visibleTarget: HdagVisibleNode = visibleRoot;
     for (const pathElement of raw.target) {
       if (hasVisibleChildren(visibleTarget)) {
         visibleTarget = visibleTarget.children[pathElement];
@@ -91,7 +157,7 @@ function getVisibleNodes(focal: HdagVisibleNode): HdagVisibleNode[] {
 
 /** Render node.outboundEdges as a list of HdagEdge. */
 function explicitOutboundEdges(source: HdagNode): HdagEdge[] {
-  return source.outboundEdges.map((target: hdagNodePath) => ({
+  return source.outboundEdges.map((target: HdagPath) => ({
     source: source.path,
     target,
   }));

@@ -1,6 +1,6 @@
-<p>{{ name$ | async }}</p>
+<p (click)="handleClick()">{{ path }}</p>
 <ul>
-    <li *ngFor="let childName of childNames$ | async">
-    {{ childName }}
+    <li *ngFor="let childPath of childPaths">
+        <app-visiblenode-container [path]="childPath"></app-visiblenode-container>
     </li>
 </ul>

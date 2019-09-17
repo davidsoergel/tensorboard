@@ -15,6 +15,7 @@ import { GraphInfoComponent } from './graph-info/graph-info.component';
 import { storeFreeze } from 'ngrx-store-freeze';
 import { GraphV2PluginState } from 'src/store/types';
 import { VisibleNodeComponent } from './visiblenode/visiblenode.component';
+import { VisiblenodeContainerComponent } from './visiblenode-container/visiblenode-container.component';
 
 export const metaReducers: Array<
   MetaReducer<GraphV2PluginState>
@@ -26,6 +27,7 @@ export const metaReducers: Array<
     GraphInfoComponent,
     GraphInfoContainerComponent,
     VisibleNodeComponent,
+    VisiblenodeContainerComponent,
   ],
   imports: [
     BrowserModule,

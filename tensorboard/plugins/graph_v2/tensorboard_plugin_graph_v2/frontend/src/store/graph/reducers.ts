@@ -21,10 +21,23 @@ import {
   setGraphName,
   expandNode,
   setGraph,
+  collapseNode,
+  toggleNode,
 } from './actions';
 import { GraphAndHierarchy } from './legacy/loader';
 import { GraphUIState, INITIAL_GRAPH_UI_STATE } from './types';
-import { hdagNodePath, HdagVisibleNode, HdagNode } from './hdag';
+import {
+  HdagPath,
+  HdagVisibleNode,
+  HdagNode,
+  findVisibleNode,
+  findNode,
+  hasVisibleChildren,
+  applyUpdateVisibleNode,
+  HdagVisibleRoot,
+  HdagRoot,
+} from './hdag';
+import { mapValues } from 'src/utils/utils';
 
 export const graphReducer = createReducer(
   INITIAL_GRAPH_UI_STATE,
@@ -36,40 +49,76 @@ export const graphReducer = createReducer(
   ),
 
   on(setGraph, (state, { graph }) => applySetGraph(state, graph)),
-  on(expandNode, (state, { path }) => applyExpandNode(state, path))
+  on(expandNode, (state, { path }) => applyExpandNode(state, path)),
+  on(collapseNode, (state, { path }) => applyCollapseNode(state, path)),
+  on(toggleNode, (state, { path }) => applyToggleNode(state, path))
 );
 
-export function applySetGraphName(
+function applySetGraphName(
   state: GraphUIState,
   graphName: string
 ): GraphUIState {
   return { ...state, graphName };
 }
 
-export function applySetGraph(
-  state: GraphUIState,
-  graph: HdagNode
-): GraphUIState {
-  const visibleGraph: HdagVisibleNode = { hdagNode: graph, children: {} };
+function applySetGraph(state: GraphUIState, graph: HdagRoot): GraphUIState {
+  const visibleChildren = mapValues(graph.children, (child: HdagNode) => ({
+    hdagNode: child,
+    children: {},
+  }));
+  const visibleGraph: HdagVisibleRoot = {
+    hdagNode: graph,
+    children: visibleChildren,
+  };
+  console.log('set graph.');
   return { ...state, graph, visibleGraph };
 }
 
-export function applySetLegacyGraphAndHierarchy(
+function applySetLegacyGraphAndHierarchy(
   state: GraphUIState,
   legacyGraphAndHierarchy: GraphAndHierarchy
 ): GraphUIState {
   return { ...state, legacyGraphAndHierarchy };
 }
 
-export function applyExpandNode(
-  state: GraphUIState,
-  path: hdagNodePath
-): GraphUIState {
-  /*
-  const node: findNode(state.graph, path);
-  const visibleNode: findVisibleNode(state.visibleGraph, path);
-  const visibleGraph: HdagVisibleNode = applyUpdateVisibleNode(state.visibleGraph, visibleNode, );
-  return {...state, visibleGraph};
-  */
-  return state;
+function applyExpandNode(state: GraphUIState, path: HdagPath): GraphUIState {
+  const node = findNode(state.graph, path);
+  const visibleNode = findVisibleNode(state.visibleGraph, path);
+  if (hasVisibleChildren(visibleNode)) {
+    return state;
+  }
+  const expandedNode: HdagVisibleNode = {
+    ...visibleNode,
+    children: mapValues(node.children, (child: HdagNode) => ({
+      hdagNode: child,
+      children: {},
+    })),
+  };
+  const visibleGraph: HdagVisibleRoot = applyUpdateVisibleNode(
+    state.visibleGraph,
+    expandedNode
+  );
+  return { ...state, visibleGraph };
+}
+
+function applyCollapseNode(state: GraphUIState, path: HdagPath): GraphUIState {
+  const visibleNode = findVisibleNode(state.visibleGraph, path);
+  if (!hasVisibleChildren(visibleNode)) {
+    return state;
+  }
+  const collapsedNode: HdagVisibleNode = { ...visibleNode, children: {} };
+  const visibleGraph: HdagVisibleRoot = applyUpdateVisibleNode(
+    state.visibleGraph,
+    collapsedNode
+  );
+  return { ...state, visibleGraph };
+}
+
+function applyToggleNode(state: GraphUIState, path: HdagPath): GraphUIState {
+  const visibleNode = findVisibleNode(state.visibleGraph, path);
+  if (hasVisibleChildren(visibleNode)) {
+    return applyCollapseNode(state, path);
+  } else {
+    return applyExpandNode(state, path);
+  }
 }

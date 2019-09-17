@@ -19,8 +19,8 @@ import { HdagNode, HdagVisibleNode } from 'src/store/graph/hdag';
 })
 export class GraphInfoComponent implements OnInit {
   @Input() graphName$: Observable<string>;
-  @Input() graph$: Observable<HdagNode>;
-  @Input() visibleGraph$: Observable<HdagVisibleNode>;
+  // @Input() graph$: Observable<HdagNode>;
+  // @Input() visibleGraph$: Observable<HdagVisibleNode>;
   // @Input() graph$: Observable<SlimGraph>;
   // @Input() hierarchy$: Observable<Hierarchy>;
   // metanode$: Observable<Metanode>;

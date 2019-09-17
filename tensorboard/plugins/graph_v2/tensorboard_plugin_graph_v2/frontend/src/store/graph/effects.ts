@@ -35,7 +35,7 @@ import {
 } from './legacy/loader';
 import { GraphUIState } from './types';
 import { Tracker } from './legacy/util';
-import { HdagNode } from './hdag';
+import { HdagNode, HdagRoot } from './hdag';
 import { testHdag } from './hdag_test';
 
 @Injectable()
@@ -76,7 +76,7 @@ export class GraphV2Effects {
       console.log(`Going to load test graph`);
       return of(testHdag);
     }),
-    switchMap((graph: HdagNode) => [
+    switchMap((graph: HdagRoot) => [
       setGraphName('loaded'),
       setGraph(graph),
       loadGraphSuccess(),

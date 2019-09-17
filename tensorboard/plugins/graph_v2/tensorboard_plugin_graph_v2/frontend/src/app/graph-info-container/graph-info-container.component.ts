@@ -47,8 +47,8 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
   );
   */
 
-  graph$ = this.store.pipe(select(selectGraph));
-  visibleGraph$ = this.store.pipe(select(selectVisibleGraph));
+  // graph$ = this.store.pipe(select(selectGraph));
+  // visibleGraph$ = this.store.pipe(select(selectVisibleGraph));
 
   onClick() {
     // const action = SetGraphName('Hello world');

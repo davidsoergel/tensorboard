@@ -18,7 +18,7 @@
 import { createAction } from '@ngrx/store';
 import { GraphAndHierarchy } from './legacy/loader';
 import { GraphUIState } from './types';
-import { hdagNodePath, HdagNode } from './hdag';
+import { HdagPath, HdagNode, HdagRoot } from './hdag';
 
 /** Represents the intent to clear the graph. */
 export const clearGraph = createAction('[Graph] Clear Graph');
@@ -40,7 +40,7 @@ export const setLegacyGraphAndHierarchy = createAction(
 
 export const setGraph = createAction(
   '[Graph] Set Graph',
-  (graph: HdagNode) => ({
+  (graph: HdagRoot) => ({
     graph,
   })
 );
@@ -76,16 +76,23 @@ export const loadGraphFailure = createAction(
 
 export const layoutGraph = createAction('[Graph] Layout Graph');
 
+export const toggleNode = createAction(
+  '[Graph] Toggle Node',
+  (path: HdagPath) => ({
+    path,
+  })
+);
+
 export const expandNode = createAction(
   '[Graph] Expand Node',
-  (path: hdagNodePath) => ({
+  (path: HdagPath) => ({
     path,
   })
 );
 
 export const collapseNode = createAction(
   '[Graph] Collapse Node',
-  (path: hdagNodePath) => ({
+  (path: HdagPath) => ({
     path,
   })
 );
