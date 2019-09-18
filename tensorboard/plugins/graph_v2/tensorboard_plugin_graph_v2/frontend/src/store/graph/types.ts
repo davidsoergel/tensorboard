@@ -16,21 +16,20 @@
  */
 
 import {Record} from 'immutable';
-import {GraphUIState} from './graph/types';
 
-/**
- * Definition of the structure of the plugin state.
- */
-export interface GraphV2PluginStateDef {
-  // The current graph.
-  graph: GraphUIState;
+interface GraphUIStateDef {
+  // TODO(soergel): this is a stub
+  graphName: string;
+  // graph: ...
+  // layout: ...
 }
 
-const INITIAL_GRAPH_V2_PLUGIN_STATE: GraphV2PluginStateDef = {
-  graph: new GraphUIState(),
+/** Default values for the CanvasWithLayout. */
+const INITIAL_GRAPH_UI_STATE: GraphUIStateDef = {
+  graphName: 'Untitled',
 };
 
 /**
- * Top level state of the application.
+ * The immutable graph ui state, implementing @see GraphUIStateDef.
  */
-export class GraphV2PluginState extends Record(INITIAL_GRAPH_V2_PLUGIN_STATE) {}
+export class GraphUIState extends Record(INITIAL_GRAPH_UI_STATE) {}

@@ -15,22 +15,7 @@
  * =============================================================================
  */
 
-import {Record} from 'immutable';
-import {GraphUIState} from './graph/types';
-
-/**
- * Definition of the structure of the plugin state.
- */
-export interface GraphV2PluginStateDef {
-  // The current graph.
-  graph: GraphUIState;
-}
-
-const INITIAL_GRAPH_V2_PLUGIN_STATE: GraphV2PluginStateDef = {
-  graph: new GraphUIState(),
-};
-
-/**
- * Top level state of the application.
- */
-export class GraphV2PluginState extends Record(INITIAL_GRAPH_V2_PLUGIN_STATE) {}
+export * from './types';
+export * from './selectors';
+export * from './reducers';
+export * from './actions';
