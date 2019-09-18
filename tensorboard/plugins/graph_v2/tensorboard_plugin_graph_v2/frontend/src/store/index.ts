@@ -14,26 +14,19 @@
  * limitations under the License.
  * =============================================================================
  */
-import {GraphV2PluginState, GraphV2PluginStateDef} from './types';
-import {GraphUIState} from './graph/types';
+import {GraphV2PluginState, INITIAL_GRAPH_V2_PLUGIN_STATE} from './types';
 import {graphReducer} from './graph/reducers';
 import {ActionReducerMap, Action} from '@ngrx/store';
+
+export {INITIAL_GRAPH_V2_PLUGIN_STATE};
 
 // NgRx doesn't allow a root-level reducers.
 // Most everything goes in the 'graph' feature reducer for now.
 // Maybe there will be a future need for user prefs etc. as a separate subtree.
 
 export const graphV2PluginReducer: ActionReducerMap<
-  GraphV2PluginStateDef,
+  GraphV2PluginState,
   Action
 > = {
   graph: graphReducer,
 };
-
-export const initialState = initializeApplicationState();
-
-export function initializeApplicationState(): GraphV2PluginState {
-  const state = new GraphV2PluginState();
-  console.log('Initialized state: ', state);
-  return state;
-}

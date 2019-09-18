@@ -36,7 +36,7 @@ export class GraphV2Effects {
   loadGraphFromUrl$ = this.action$.pipe(
     ofType(LoadGraphRequest),
     switchMap((action) => {
-      return of(new GraphUIState({graphName: 'loaded'}));
+      return of({graphName: 'loaded'});
     }), // stub
     switchMap((graph: GraphUIState) => [SetGraph(graph), LoadGraphSuccess()]),
     catchError((error) => of(LoadGraphFailure(error)))

@@ -15,9 +15,7 @@
  * =============================================================================
  */
 
-import {Record} from 'immutable';
-
-interface GraphUIStateDef {
+export interface GraphUIState {
   // TODO(soergel): this is a stub
   graphName: string;
   // graph: ...
@@ -25,11 +23,6 @@ interface GraphUIStateDef {
 }
 
 /** Default values for the CanvasWithLayout. */
-const INITIAL_GRAPH_UI_STATE: GraphUIStateDef = {
+export const INITIAL_GRAPH_UI_STATE: GraphUIState = {
   graphName: 'Untitled',
 };
-
-/**
- * The immutable graph ui state, implementing @see GraphUIStateDef.
- */
-export class GraphUIState extends Record(INITIAL_GRAPH_UI_STATE) {}
