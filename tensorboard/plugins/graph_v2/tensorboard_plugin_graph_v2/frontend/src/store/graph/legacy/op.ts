@@ -1,4 +1,4 @@
-import {OpNode, FUNCTION_LIBRARY_NODE_PREFIX, SlimGraph} from './graph';
+import { FUNCTION_LIBRARY_NODE_PREFIX, OpNode, SlimGraph } from './graph';
 
 /* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 
@@ -405,17 +405,17 @@ export class TpuCompatibilityProvider implements CompatibilityProvider {
    * Note that this is only a best-effort check.
    */
   private isNotTpuOp(opDevice: string): boolean {
-    if (opDevice.toLowerCase().search('cpu:') != -1) {
+    if (opDevice.toLowerCase().search('cpu:') !== -1) {
       return true;
     }
-    if (opDevice.toLowerCase().search('gpu:') != -1) {
+    if (opDevice.toLowerCase().search('gpu:') !== -1) {
       return true;
     }
-    return opDevice.toLowerCase().search('tpu') == -1;
+    return opDevice.toLowerCase().search('tpu') === -1;
   }
   opValid(opNode: OpNode): boolean {
     // Function library nodes are generally for internal use.
-    if (opNode.name.search(FUNCTION_LIBRARY_NODE_PREFIX) == 0) {
+    if (opNode.name.search(FUNCTION_LIBRARY_NODE_PREFIX) === 0) {
       return true;
     }
     // Nodes that lack op types should be ignored.
@@ -427,7 +427,7 @@ export class TpuCompatibilityProvider implements CompatibilityProvider {
       return true;
     }
     // If assigned to the TPU_SYSTEM device, assume op is valid.
-    if (opNode.device && opNode.device.search('TPU_SYSTEM') != -1) {
+    if (opNode.device && opNode.device.search('TPU_SYSTEM') !== -1) {
       return true;
     }
     return TpuCompatibilityProvider.WHITELIST.includes(opNode.op);
@@ -441,13 +441,13 @@ export function checkOpsForCompatibility(
   if (provider === null) {
     throw new Error('Compatibility provider required, but got: ' + provider);
   }
-  Object.values(graph.nodes).forEach((node) => {
+  Object.values(graph.nodes).forEach(node => {
     node.compatible = provider.opValid(node);
-    node.inEmbeddings.forEach((node) => {
+    node.inEmbeddings.forEach(node => {
       node.compatible = provider.opValid(node);
     });
 
-    node.outEmbeddings.forEach((node) => {
+    node.outEmbeddings.forEach(node => {
       node.compatible = provider.opValid(node);
     });
   });

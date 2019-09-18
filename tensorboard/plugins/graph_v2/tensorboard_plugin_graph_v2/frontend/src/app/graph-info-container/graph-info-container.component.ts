@@ -1,9 +1,9 @@
-import {Component, OnInit, OnChanges, SimpleChanges} from '@angular/core';
-import {Observable, of} from 'rxjs';
-import {selectGraphName, LoadGraphRequest} from 'src/store/graph';
-import {Store, select} from '@ngrx/store';
-import {GraphV2PluginState} from 'src/store/types';
-import {switchMap} from 'rxjs/operators';
+import { Component, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { select, Store } from '@ngrx/store';
+import { Observable, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
+import { loadGraphRequest, selectGraphName } from 'src/store/graph';
+import { GraphV2PluginState } from 'src/store/types';
 
 @Component({
   selector: 'app-graph-info-container',
@@ -11,11 +11,11 @@ import {switchMap} from 'rxjs/operators';
   styleUrls: ['./graph-info-container.component.scss'],
 })
 export class GraphInfoContainerComponent implements OnInit, OnChanges {
-  public graphName$: Observable<string>;
+  graphName$: Observable<string>;
 
-  public onClick() {
+  onClick() {
     // const action = SetGraphName('Hello world');
-    const action = LoadGraphRequest(
+    const action = loadGraphRequest(
       'http://localhost:6006/data/plugin/graphs/graph?run=1-learning_rate%3D5e-05&conceptual=false'
     );
     //      this._graphUrl('1-learning_rate', 100, 'aoeu')
@@ -25,10 +25,10 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
     this.store.dispatch(action);
   }
 
-  _graphUrl(run, limitAttrSize, largeAttrsKey) {
+  _graphUrl(run: string, limitAttrSize: number, largeAttrsKey: string) {
     const params = new URLSearchParams({
       run,
-      limit_attr_size: limitAttrSize,
+      limit_attr_size: `${limitAttrSize}`,
       large_attrs_key: largeAttrsKey,
     });
     /*
@@ -46,7 +46,7 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
   ngOnInit() {
     console.log(this.store);
     this.graphName$ = this.store.pipe(
-      switchMap((a) => {
+      switchMap(a => {
         console.log(a);
         return of(a);
       }),

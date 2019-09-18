@@ -15,23 +15,24 @@
  * =============================================================================
  */
 
-import {Injectable} from '@angular/core';
-import {Actions, Effect, ofType} from '@ngrx/effects';
-import {of, from} from 'rxjs';
-import {catchError, switchMap, map} from 'rxjs/operators';
+import { Injectable } from '@angular/core';
+import { Actions, Effect, ofType } from '@ngrx/effects';
+import { from, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 import {
-  LoadGraphFailure,
-  LoadGraphRequest,
-  LoadGraphSuccess,
-  SetGraphName,
-  SetGraphAndHierarchy,
+  loadGraphFailure,
+  loadGraphRequest,
+  loadGraphSuccess,
+  setGraphAndHierarchy,
+  setGraphName,
 } from './actions';
-import {GraphUIState} from './types';
 import {
   fetchAndConstructHierarchicalGraph,
   GraphAndHierarchy,
 } from './legacy/loader';
+import { GraphUIState } from './types';
+import { Tracker } from './legacy/util';
 
 @Injectable()
 export class GraphV2Effects {
@@ -39,8 +40,8 @@ export class GraphV2Effects {
 
   @Effect()
   loadGraphFromUrl$ = this.action$.pipe(
-    ofType(LoadGraphRequest),
-    switchMap((action) => {
+    ofType(loadGraphRequest),
+    switchMap(action => {
       console.log(`Going to fetch ${action.graphUrl}`);
       return from(
         fetchAndConstructHierarchicalGraph(getTracker(), action.graphUrl, null)
@@ -54,26 +55,26 @@ export class GraphV2Effects {
     }),
     */
     switchMap((graph: GraphAndHierarchy) => [
-      SetGraphName('loaded'),
-      SetGraphAndHierarchy(graph),
-      LoadGraphSuccess(),
+      setGraphName('loaded'),
+      setGraphAndHierarchy(graph),
+      loadGraphSuccess(),
     ]),
-    catchError((error) => {
+    catchError(error => {
       console.log(error);
-      return of(LoadGraphFailure(error));
+      return of(loadGraphFailure(error));
     })
   );
 }
 
-export function getTracker() {
+export function getTracker(): Tracker {
   return {
-    setMessage: (msg) => {
+    setMessage: (msg: string) => {
       console.log(msg);
     },
-    updateProgress: (value) => {
+    updateProgress: (value: number) => {
       console.log(value);
     },
-    reportError: (msg: string, err) => {
+    reportError: (msg: string, err: Error) => {
       console.log(msg);
       console.log(err);
     },

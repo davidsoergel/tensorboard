@@ -13,33 +13,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+// tslint:disable-next-line: no-reference
 ///<reference path="./graphlib.d.ts" />
 import * as graphlib from 'graphlib';
-import * as proto from './proto';
-import * as util from './util';
-import * as template from './template';
+import { NodeStats, ProgressTracker } from './common';
 import {
-  ROOT_NAME,
+  createGraph,
+  createMetaedge,
+  createMetanode,
+  createSeriesNode,
   FUNCTION_LIBRARY_NODE_PREFIX,
   getHierarchicalPath,
+  getSeriesNodeName,
+  GraphType,
+  GroupNode,
+  Metaedge,
+  MetaedgeImpl,
+  Metanode,
+  Node,
   NodeType,
+  OpNode,
+  ROOT_NAME,
+  SeriesGroupingType,
   SeriesNode,
   SlimGraph,
-  SeriesGroupingType,
-  Node,
-  Metaedge,
-  Metanode,
-  GroupNode,
-  OpNode,
-  createMetanode,
-  createMetaedge,
-  createGraph,
-  GraphType,
-  getSeriesNodeName,
-  createSeriesNode,
-  MetaedgeImpl,
 } from './graph';
-import {ProgressTracker, NodeStats} from './common';
+import * as proto from './proto';
+import * as template from './template';
+import * as util from './util';
 
 /**
  * Parses a native js value, which can be either a string, boolean or number.
@@ -53,11 +54,11 @@ function parseValue(value: string): string | number | boolean {
   if (value === 'false') {
     return false;
   }
-  let firstChar = value[0];
+  const firstChar = value[0];
   if (firstChar === '"') {
     return value.substring(1, value.length - 1);
   }
-  let num = parseFloat(value);
+  const num = Number.parseFloat(value);
   return isNaN(num) ? value : num;
 }
 
@@ -66,7 +67,7 @@ function parseValue(value: string): string | number | boolean {
  */
 export function fetchPbTxt(filepath: string): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
-    fetch(filepath).then((res) => {
+    fetch(filepath).then(res => {
       // Fetch does not reject for 400+.
       if (res.ok) {
         res.arrayBuffer().then(resolve, reject);
@@ -122,8 +123,8 @@ export function fetchAndParseGraphData(
       40,
       () => {
         if (pbTxtFile) {
-          return new Promise<ArrayBuffer>(function(resolve, reject) {
-            let fileReader = new FileReader();
+          return new Promise<ArrayBuffer>((resolve, reject) => {
+            const fileReader = new FileReader();
             // TODO(soergel): don't cast
             fileReader.onload = () => resolve(fileReader.result as ArrayBuffer);
             fileReader.onerror = () => reject(fileReader.error);
@@ -158,11 +159,11 @@ export function fetchAndParseGraphData(
  */
 export function streamParse(
   arrayBuffer: ArrayBuffer,
-  callback: (string) => void,
-  chunkSize: number = 1000000,
-  delim: string = '\n'
+  callback: (part: string) => void,
+  chunkSize = 1000000,
+  delim = '\n'
 ): Promise<boolean> {
-  return new Promise<boolean>(function(resolve, reject) {
+  return new Promise<boolean>((resolve, reject) => {
     function readChunk(oldData: string, newData: string, offset: number) {
       const doneReading = offset >= arrayBuffer.byteLength;
       const parts = newData.split(delim);
@@ -172,7 +173,7 @@ export function streamParse(
       // due to the chunking.
       const remainder = doneReading ? '' : parts.pop();
 
-      for (let part of parts) {
+      for (const part of parts) {
         try {
           callback(part);
         } catch (e) {
@@ -190,7 +191,8 @@ export function streamParse(
         arrayBuffer.slice(offset, offset + chunkSize),
       ]);
       const file = new FileReader();
-      file.onload = function(e: any) {
+      // tslint:disable-next-line: no-any
+      file.onload = (e: any) => {
         readChunk(remainder, e.target.result, offset + chunkSize);
       };
       file.readAsText(nextChunk);
@@ -210,7 +212,7 @@ export function streamParse(
  * dependencies.
  * See https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/graph.proto
  */
-const GRAPH_REPEATED_FIELDS: {[attrPath: string]: boolean} = {
+const GRAPH_REPEATED_FIELDS: { [attrPath: string]: boolean } = {
   'library.function': true,
   'library.function.node_def': true,
   'library.function.node_def.input': true,
@@ -247,7 +249,7 @@ const GRAPH_REPEATED_FIELDS: {[attrPath: string]: boolean} = {
   'node.attr.value.tensor.tensor_shape.dim': true,
 };
 
-const METADATA_REPEATED_FIELDS: {[attrPath: string]: boolean} = {
+const METADATA_REPEATED_FIELDS: { [attrPath: string]: boolean } = {
   'step_stats.dev_stats': true,
   'step_stats.dev_stats.node_stats': true,
   'step_stats.dev_stats.node_stats.output': true,
@@ -258,21 +260,22 @@ const METADATA_REPEATED_FIELDS: {[attrPath: string]: boolean} = {
 /**
  * Parses an ArrayBuffer of a proto txt file into a raw Graph object.
  */
-export function parseGraphPbTxt(
-  input: ArrayBuffer
-): Promise<proto.GraphDef> {
+export function parseGraphPbTxt(input: ArrayBuffer): Promise<proto.GraphDef> {
   return parsePbtxtFile(input, GRAPH_REPEATED_FIELDS);
 }
 
 /**
  * Parses an ArrayBuffer of a proto txt file into a StepStats object.
  */
-export function parseStatsPbTxt(
-  input: ArrayBuffer
-): Promise<proto.StepStats> {
+export function parseStatsPbTxt(input: ArrayBuffer): Promise<proto.StepStats> {
   return parsePbtxtFile(input, METADATA_REPEATED_FIELDS).then(
-    (obj) => obj['step_stats']
+    obj => obj.step_stats
   );
+}
+
+type PlainJSValue = PlainJSObject | string | number | boolean;
+interface PlainJSObject {
+  [name: string]: PlainJSValue | PlainJSValue[];
 }
 
 /**
@@ -285,20 +288,23 @@ export function parseStatsPbTxt(
  */
 function parsePbtxtFile(
   input: ArrayBuffer,
-  repeatedFields: {[attrPath: string]: boolean}
+  repeatedFields: { [attrPath: string]: boolean }
+  // tslint:disable-next-line: no-any
 ): Promise<any> {
-  let output: {[name: string]: any} = {};
-  let stack = [];
-  let path: string[] = [];
-  let current: {[name: string]: any} = output;
+  // tslint:disable-next-line: no-any
+  const output: PlainJSObject = {};
+  const stack: PlainJSObject[] = [];
+  const path: string[] = [];
+  // tslint:disable-next-line: no-any
+  let current: PlainJSObject = output;
 
   function splitNameAndValueInAttribute(line: string) {
-    let colonIndex = line.indexOf(':');
-    let name = line.substring(0, colonIndex).trim();
-    let value = parseValue(line.substring(colonIndex + 2).trim());
+    const colonIndex = line.indexOf(':');
+    const name = line.substring(0, colonIndex).trim();
+    const value = parseValue(line.substring(colonIndex + 2).trim());
     return {
-      name: name,
-      value: value,
+      name,
+      value,
     };
   }
 
@@ -314,13 +320,13 @@ function parsePbtxtFile(
    *     an attribute is an array or not.
    */
   function addAttribute(
-    obj: Object,
+    obj: PlainJSObject,
     name: string,
-    value: Object | string | number | boolean,
+    value: PlainJSValue,
     path: string[]
   ): void {
     // We treat 'node' specially since it is done so often.
-    let existingValue = obj[name];
+    const existingValue = obj[name];
     if (existingValue == null) {
       obj[name] = path.join('.') in repeatedFields ? [value] : value;
     } else if (Array.isArray(existingValue)) {
@@ -331,7 +337,7 @@ function parsePbtxtFile(
   }
 
   // Run through the file a line at a time.
-  return streamParse(input, function(line: string) {
+  return streamParse(input, (line: string) => {
     if (!line) {
       return;
     }
@@ -339,8 +345,8 @@ function parsePbtxtFile(
 
     switch (line[line.length - 1]) {
       case '{': // create new object
-        let name = line.substring(0, line.length - 2).trim();
-        let newValue: {[name: string]: any} = {};
+        const name = line.substring(0, line.length - 2).trim();
+        const newValue: PlainJSObject = {};
         stack.push(current);
         path.push(name);
         addAttribute(current, name, newValue, path);
@@ -351,11 +357,11 @@ function parsePbtxtFile(
         path.pop();
         break;
       default:
-        let x = splitNameAndValueInAttribute(line);
+        const x = splitNameAndValueInAttribute(line);
         addAttribute(current, x.name, x.value, path.concat(x.name));
         break;
     }
-  }).then(function() {
+  }).then(() => {
     return output;
   });
 }

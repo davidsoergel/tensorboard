@@ -13,13 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+// tslint:disable: no-any
+
 // tslint:disable-next-line: no-reference
 ///<reference path="./graphlib.d.ts" />
 import * as graphlib from 'graphlib';
+import { NodeStats, ProgressTracker } from './common';
+import * as hierarchy from './hierarchy';
 import * as proto from './proto';
 import * as util from './util';
-import * as hierarchy from './hierarchy';
-import {ProgressTracker, NodeStats} from './common';
 
 /** Delimiter used in node names to denote namespaces. */
 export const NAMESPACE_DELIM = '/';
@@ -92,7 +94,7 @@ export interface BaseEdge extends graphlib.EdgeObject {
  * that we need.
  */
 export class SlimGraph {
-  nodes: {[nodeName: string]: OpNode};
+  nodes: { [nodeName: string]: OpNode };
   edges: BaseEdge[];
 
   constructor() {
@@ -112,7 +114,7 @@ export interface BuildParams {
   enableEmbedding: boolean;
   inEmbeddingTypes: string[];
   outEmbeddingTypes: string[];
-  refEdges: {[inputEdge: string]: boolean};
+  refEdges: { [inputEdge: string]: boolean };
 }
 
 /**
@@ -158,7 +160,7 @@ export interface Node {
    * 'nodeAttributes' is meant to avoid naming-conflicts with the 'attr' in
    * subclasses of Node.
    */
-  nodeAttributes: {[key: string]: any};
+  nodeAttributes: { [key: string]: any };
 }
 
 export type TensorShape = number[];
@@ -167,7 +169,7 @@ export interface OpNode extends Node {
   op: string;
   // The device on which the op ran. Null if it is unknown.
   device: string;
-  attr: {key: string; value: any}[];
+  attr: Array<{ key: string; value: any }>;
   inputs: NormalizedInput[];
   inEmbeddings: OpNode[];
   outEmbeddings: OpNode[];
@@ -188,7 +190,7 @@ export interface OpNode extends Node {
    * - [5, -1, 3] means rank-3 tensor of shape is 5x?x3. The size
    *       of the middle dimension is unknown (encoded as -1).
    */
-  outputShapes: {[key: string]: TensorShape};
+  outputShapes: { [key: string]: TensorShape };
 
   // The XLA Cluster on which the op ran. Null if it is unknown.
   xlaCluster: string;
@@ -231,7 +233,7 @@ export interface EllipsisNode extends Node {
    * Sets the number of nodes this ellipsis represents and changes the node
    * name accordingly.
    */
-  setNumMoreNodes(numNodes: number);
+  setNumMoreNodes(numNodes: number): void;
 }
 
 export interface GroupNode extends Node {
@@ -321,19 +323,19 @@ export interface GroupNode extends Node {
    * Stores how many times each device name appears in its children
    * op nodes. Used to color group nodes by devices.
    */
-  deviceHistogram: {[device: string]: number};
+  deviceHistogram: { [device: string]: number };
 
   /**
    * Stores how many times each XLA cluster name appears in its children
    * op nodes. Used to color group nodes by XLA clusters.
    */
-  xlaClusterHistogram: {[device: string]: number};
+  xlaClusterHistogram: { [device: string]: number };
 
   /**
    * Stores how many ops in sub-graph were compatible and how many are
    * incompatible.
    */
-  compatibilityHistogram: {compatible: number; incompatible: number};
+  compatibilityHistogram: { compatible: number; incompatible: number };
 
   /**
    * Flag indicating whether this GroupNode's metagraph contains any edges that
@@ -346,7 +348,7 @@ export interface GroupNode extends Node {
 export interface Metanode extends GroupNode {
   depth: number;
   templateId: string;
-  opHistogram: {[op: string]: number};
+  opHistogram: { [op: string]: number };
 
   // The name of the function this metanode is associated with if any.
   associatedFunction: string;
@@ -375,7 +377,7 @@ export class EllipsisNodeImpl implements EllipsisNode {
   cardinality: number;
   parentNode: Node;
   include: InclusionType;
-  nodeAttributes: {[key: string]: any};
+  nodeAttributes: { [key: string]: any };
   /**
    * Constructs a new ellipsis annotation node.
    *
@@ -406,7 +408,7 @@ export class OpNodeImpl implements OpNode {
   op: string;
   device: string;
   stats: NodeStats;
-  attr: {key: string; value: any}[];
+  attr: Array<{ key: string; value: any }>;
   inputs: NormalizedInput[];
   type: NodeType;
   isGroupNode: boolean;
@@ -416,8 +418,8 @@ export class OpNodeImpl implements OpNode {
   parentNode: Node;
   include: InclusionType;
   owningSeries: string;
-  outputShapes: {[key: string]: TensorShape};
-  nodeAttributes: {[key: string]: any};
+  outputShapes: { [key: string]: TensorShape };
+  nodeAttributes: { [key: string]: any };
   xlaCluster: string;
   compatible: boolean;
 
@@ -470,23 +472,23 @@ export function createMetanode(name: string, opt = {}): Metanode {
 export function joinStatsInfoWithGraph(
   graph: SlimGraph,
   stats: proto.StepStats,
-  devicesForStats?: {[device: string]: boolean}
+  devicesForStats?: { [device: string]: boolean }
 ): void {
   // Reset stats for each node.
-  Object.values(graph.nodes).forEach((node) => {
+  Object.values(graph.nodes).forEach(node => {
     node.stats = null;
   });
 
-  stats.dev_stats.forEach((devStats) => {
+  stats.dev_stats.forEach(devStats => {
     // Ignore devices that are not selected.
     if (devicesForStats && !devicesForStats[devStats.device]) {
       return;
     }
-    devStats.node_stats.forEach((nodeStats) => {
+    devStats.node_stats.forEach(nodeStats => {
       // Lookup the node in the graph by its original name, e.g. A/B. If not
       // found, lookup by the rewritten name A/B/(B) in case the name is both
       // a namespace and a node name.
-      let nodeName =
+      const nodeName =
         nodeStats.node_name in graph.nodes
           ? nodeStats.node_name
           : getStrictName(nodeStats.node_name);
@@ -499,24 +501,22 @@ export function joinStatsInfoWithGraph(
       // Compute the total bytes used.
       let totalBytes = 0;
       if (nodeStats.memory) {
-        nodeStats.memory.forEach((alloc) => {
+        nodeStats.memory.forEach(alloc => {
           if (alloc.total_bytes) {
             if (alloc.total_bytes > 0) {
               totalBytes += Number(alloc.total_bytes);
             } else {
-              /* tslint:disable */
               console.log(
                 'ignoring negative memory allocation for ' + nodeName
               );
-              /* tslint:enable */
             }
           }
         });
       }
       let outputSize: number[][] = null;
       if (nodeStats.output) {
-        outputSize = nodeStats.output.map((output) => {
-          return output.tensor_description.shape.dim.map((dim) =>
+        outputSize = nodeStats.output.map(output => {
+          return output.tensor_description.shape.dim.map(dim =>
             Number(dim.size)
           );
         });
@@ -533,9 +533,7 @@ export function joinStatsInfoWithGraph(
             nodeStats.all_start_micros + nodeStats.all_end_rel_micros
           );
         } else {
-          /* tslint:disable */
           console.log('ignoring negative runtime for ' + nodeName);
-          /* tslint:enable */
         }
       }
     });
@@ -552,14 +550,14 @@ export class MetanodeImpl implements Metanode {
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>;
   bridgegraph: graphlib.Graph<GroupNode | OpNode, Metaedge>;
   templateId: string;
-  opHistogram: {[op: string]: number};
-  deviceHistogram: {[op: string]: number};
-  xlaClusterHistogram: {[op: string]: number};
-  compatibilityHistogram: {compatible: number; incompatible: number};
+  opHistogram: { [op: string]: number };
+  deviceHistogram: { [op: string]: number };
+  xlaClusterHistogram: { [op: string]: number };
+  compatibilityHistogram: { compatible: number; incompatible: number };
   parentNode: Node;
   hasNonControlEdges: boolean;
   include: InclusionType;
-  nodeAttributes: {[key: string]: any};
+  nodeAttributes: { [key: string]: any };
   associatedFunction: string;
 
   /** A label object for meta-nodes in the graph hierarchy */
@@ -588,7 +586,7 @@ export class MetanodeImpl implements Metanode {
     this.opHistogram = {};
     this.deviceHistogram = {};
     this.xlaClusterHistogram = {};
-    this.compatibilityHistogram = {compatible: 0, incompatible: 0};
+    this.compatibilityHistogram = { compatible: 0, incompatible: 0 };
     /** unique id for a metanode of similar subgraph */
     this.templateId = null;
     /** Metanode which contains this node, if any */
@@ -608,9 +606,9 @@ export class MetanodeImpl implements Metanode {
    * op node is sgd/(sgd).
    */
   getRootOp(): OpNode {
-    let nameSplit = this.name.split('/');
-    let rootOpName = this.name + '/(' + nameSplit[nameSplit.length - 1] + ')';
-    return <OpNode>this.metagraph.node(rootOpName);
+    const nameSplit = this.name.split('/');
+    const rootOpName = this.name + '/(' + nameSplit[nameSplit.length - 1] + ')';
+    return this.metagraph.node(rootOpName) as OpNode;
   }
 
   /**
@@ -620,14 +618,14 @@ export class MetanodeImpl implements Metanode {
    * descendant leaves.
    */
   leaves(): string[] {
-    let leaves = [];
-    let queue = [<Node>this];
+    const leaves = [];
+    const queue = [this as Node];
     // let metagraph; // Defined here due to a limitation of ES6->5 compilation.
     while (queue.length) {
-      let node = queue.shift();
+      const node = queue.shift();
       if (node.isGroupNode) {
         const metagraph = (node as GroupNode).metagraph;
-        metagraph.nodes().forEach((name) => queue.push(metagraph.node(name)));
+        metagraph.nodes().forEach(name => queue.push(metagraph.node(name)));
       } else {
         leaves.push(node.name);
       }
@@ -689,15 +687,6 @@ export function createMetaedge(v: string, w: string): Metaedge {
  * A label object for edges between metanodes of subgraphs in the render graph.
  */
 export class MetaedgeImpl implements Metaedge {
-  v: string;
-  w: string;
-  baseEdgeList: BaseEdge[];
-  inbound: boolean;
-  numRegularEdges: number;
-  numControlEdges: number;
-  numRefEdges: number;
-  totalSize: number;
-
   constructor(v: string, w: string) {
     this.v = v;
     this.w = w;
@@ -708,28 +697,20 @@ export class MetaedgeImpl implements Metaedge {
     this.numRefEdges = 0;
     this.totalSize = 0;
   }
-
-  addBaseEdge(edge: BaseEdge, h: hierarchy.Hierarchy): void {
-    this.baseEdgeList.push(edge);
-    if (edge.isControlDependency) {
-      this.numControlEdges += 1;
-    } else {
-      this.numRegularEdges += 1;
-    }
-    if (edge.isReferenceEdge) {
-      this.numRefEdges += 1;
-    }
-    // Compute the size of the tensor flowing through this
-    // base edge.
-    this.totalSize += MetaedgeImpl.computeSizeOfEdge(edge, h);
-    h.maxMetaEdgeSize = Math.max(h.maxMetaEdgeSize, this.totalSize);
-  }
+  v: string;
+  w: string;
+  baseEdgeList: BaseEdge[];
+  inbound: boolean;
+  numRegularEdges: number;
+  numControlEdges: number;
+  numRefEdges: number;
+  totalSize: number;
 
   private static computeSizeOfEdge(
     edge: BaseEdge,
     h: hierarchy.Hierarchy
   ): number {
-    let opNode = <OpNode>h.node(edge.v);
+    const opNode = h.node(edge.v) as OpNode;
     if (!opNode.outputShapes) {
       // No shape information. Asssume a single number. This gives
       // a lower bound for the total size.
@@ -740,7 +721,7 @@ export class MetaedgeImpl implements Metaedge {
     // Sum the sizes of all output tensors.
     // TODO(stephanwlee): Use Object.values after es2017.
     const values = Object.keys(opNode.outputShapes)
-      .map((k) => opNode.outputShapes[k])
+      .map(k => opNode.outputShapes[k])
       .map((shape: number[]) => {
         // If the shape is unknown, treat it as 1 when computing
         // total size. This gives a lower bound for the total size.
@@ -760,6 +741,22 @@ export class MetaedgeImpl implements Metaedge {
         }, 1);
       });
     return values.reduce((sum, current) => sum + current, 0);
+  }
+
+  addBaseEdge(edge: BaseEdge, h: hierarchy.Hierarchy): void {
+    this.baseEdgeList.push(edge);
+    if (edge.isControlDependency) {
+      this.numControlEdges += 1;
+    } else {
+      this.numRegularEdges += 1;
+    }
+    if (edge.isReferenceEdge) {
+      this.numRefEdges += 1;
+    }
+    // Compute the size of the tensor flowing through this
+    // base edge.
+    this.totalSize += MetaedgeImpl.computeSizeOfEdge(edge, h);
+    h.maxMetaEdgeSize = Math.max(h.maxMetaEdgeSize, this.totalSize);
   }
 }
 
@@ -788,11 +785,11 @@ export function getSeriesNodeName(
   startId?: number,
   endId?: number
 ): string {
-  let numRepresentation =
+  const numRepresentation =
     typeof startId !== 'undefined' && typeof endId !== 'undefined'
       ? '[' + startId + '-' + endId + ']'
       : '#';
-  let pattern = prefix + numRepresentation + suffix;
+  const pattern = prefix + numRepresentation + suffix;
   return (parent ? parent + '/' : '') + pattern;
 }
 
@@ -811,12 +808,12 @@ class SeriesNodeImpl implements SeriesNode {
   metagraph: graphlib.Graph<GroupNode | OpNode, Metaedge>;
   bridgegraph: graphlib.Graph<GroupNode | OpNode, Metaedge>;
   parentNode: Node;
-  deviceHistogram: {[op: string]: number};
-  xlaClusterHistogram: {[op: string]: number};
-  compatibilityHistogram: {compatible: number; incompatible: number};
+  deviceHistogram: { [op: string]: number };
+  xlaClusterHistogram: { [op: string]: number };
+  compatibilityHistogram: { compatible: number; incompatible: number };
   hasNonControlEdges: boolean;
   include: InclusionType;
-  nodeAttributes: {[key: string]: any};
+  nodeAttributes: { [key: string]: any };
 
   constructor(
     prefix: string,
@@ -846,7 +843,7 @@ class SeriesNodeImpl implements SeriesNode {
     this.parentNode = null;
     this.deviceHistogram = {};
     this.xlaClusterHistogram = {};
-    this.compatibilityHistogram = {compatible: 0, incompatible: 0};
+    this.compatibilityHistogram = { compatible: 0, incompatible: 0 };
     this.hasNonControlEdges = false;
     this.include = InclusionType.UNSPECIFIED;
   }
@@ -856,17 +853,16 @@ class SeriesNodeImpl implements SeriesNode {
  * Extracts the shapes of the output tensors from the attr property in the
  * node proto.
  */
-// tslint:disable-next-line:no-any
 function extractOutputShapes(
-  attr: Array<{key: string; value: any}>
-): {[key: string]: TensorShape} {
-  let result = null;
+  attr: Array<{ key: string; value: any }>
+): { [key: string]: TensorShape } {
+  const result: { [key: string]: TensorShape } = null;
   // We don't know anything about the output tensors.
   if (!attr) {
     return null;
   }
   for (let i = 0; i < attr.length; i++) {
-    let {key, value} = attr[i];
+    const { key, value } = attr[i];
     if (key === OUTPUT_SHAPES_KEY) {
       if (!value.list.shape) {
         // The OUTPUT_SHAPES_KEY lacks a value. We know nothing about the shape.
@@ -874,7 +870,7 @@ function extractOutputShapes(
       }
 
       // Map all output tensors into array of numbers denoting their shape.
-      let result = value.list.shape.map((shape) => {
+      const result = value.list.shape.map((shape: any) => {
         if (shape.unknown_rank) {
           // This output tensor is of unknown rank. We don't know if it is a
           // scalar, or a tensor, or of what shape it is.
@@ -889,7 +885,7 @@ function extractOutputShapes(
         }
         // This output tensor has a known rank. Map each dimension size
         // into a number.
-        return shape.dim.map((dim) => {
+        return shape.dim.map((dim: any) => {
           // Size can be -1 if this particular dimension is unknown.
           return dim.size;
         });
@@ -911,9 +907,8 @@ function extractOutputShapes(
  * @return A string that is the name of the cluster. Or null if it could not be
  *     determined.
  */
-// tslint:disable-next-line:no-any
 function extractXlaCluster(
-  attr: Array<{key: string; value: any}>
+  attr: Array<{ key: string; value: any }>
 ): string | null {
   if (!attr) {
     return null;
@@ -922,7 +917,7 @@ function extractXlaCluster(
   // Find the attribute for XLA cluster if there is one.
   for (let i = 0; i < attr.length; i++) {
     if (attr[i].key === _XLA_CLUSTER_KEY) {
-      return attr[i].value['s'] || null;
+      return attr[i].value.s || null;
     }
   }
   return null;
@@ -939,12 +934,12 @@ function extractXlaCluster(
  * @param inputs Array of unnormalized names of input nodes.
  */
 function normalizeInputs(inputs: string[]): NormalizedInput[] {
-  let normalizedInputs: NormalizedInput[] = [];
+  const normalizedInputs: NormalizedInput[] = [];
   if (inputs == null) {
     inputs = [];
   }
-  inputs.forEach((inputName) => {
-    let isControlDependency = inputName[0] === '^';
+  inputs.forEach(inputName => {
+    const isControlDependency = inputName[0] === '^';
     if (isControlDependency) {
       // The carat merely indicates whether this input is a control dependency.
       // It should not be part of the name.
@@ -974,9 +969,9 @@ function normalizeInputs(inputs: string[]): NormalizedInput[] {
       name !== normalizedInputs[normalizedInputs.length - 1].name
     ) {
       normalizedInputs.push({
-        name: name,
-        outputTensorKey: outputTensorKey,
-        isControlDependency: isControlDependency,
+        name,
+        outputTensorKey,
+        isControlDependency,
       });
     }
   });
@@ -997,7 +992,7 @@ function addEdgeToGraph(
   }
   // Check if this op type and input number corresponds to a
   // reference edge using the refEdges dictionary in the params.
-  let isRefEdge = params.refEdges[outputNode.op + ' ' + index] === true;
+  const isRefEdge = params.refEdges[outputNode.op + ' ' + index] === true;
   graph.edges.push({
     v: inputName,
     w: outputNode.name,
@@ -1007,7 +1002,7 @@ function addEdgeToGraph(
   });
 }
 
-export const DefaultBuildParams: BuildParams = {
+export const DEFAULT_BUILD_PARAMS: BuildParams = {
   enableEmbedding: true,
   inEmbeddingTypes: ['Const'],
   outEmbeddingTypes: ['^[a-zA-Z]+Summary$'],
@@ -1040,21 +1035,21 @@ export function buildGraph(
    * A dictionary that maps each in-embedding node name to the node
    * object.
    */
-  let inEmbedding: {[nodeName: string]: OpNode} = {};
+  const inEmbedding: { [nodeName: string]: OpNode } = {};
   /**
    * A dictionary that maps each out-embedding node name to the node
    * object.
    */
-  let outEmbedding: {[nodeName: string]: OpNode} = {};
+  const outEmbedding: { [nodeName: string]: OpNode } = {};
   /**
    * A dictionary that maps each node name to an array of the node's
    * out-embedding node label objects.
    */
-  let outEmbeddings: {[inputName: string]: OpNode[]} = {};
-  let isInEmbeddedPred = getEmbedPredicate(params.inEmbeddingTypes);
-  let isOutEmbeddedPred = getEmbedPredicate(params.outEmbeddingTypes);
-  let embeddingNodeNames: string[] = [];
-  let rawNodes = graphDef.node;
+  const outEmbeddings: { [inputName: string]: OpNode[] } = {};
+  const isInEmbeddedPred = getEmbedPredicate(params.inEmbeddingTypes);
+  const isOutEmbeddedPred = getEmbedPredicate(params.outEmbeddingTypes);
+  const embeddingNodeNames: string[] = [];
+  const rawNodes = graphDef.node;
   /**
    * A list of all the non-embedding node names which appear in the processed
    * list of raw nodes. Here we pre-allocate enough room for all the rawNodes,
@@ -1064,18 +1059,18 @@ export function buildGraph(
    * Experimentation shows that around 30% of the array will go unused, and
    * even for very large networks that amounts to less than 10k spaces.
    */
-  let nodeNames = new Array<string>(rawNodes.length);
+  const nodeNames = new Array<string>(rawNodes.length);
 
   return util
     .runAsyncTask(
       'Normalizing names',
       30,
       () => {
-        let opNodes = new Array<OpNode>(rawNodes.length);
+        const opNodes = new Array<OpNode>(rawNodes.length);
         let index = 0;
 
-        const processRawNode = (rawNode) => {
-          let opNode = new OpNodeImpl(rawNode);
+        const processRawNode = (rawNode: proto.NodeDef) => {
+          const opNode = new OpNodeImpl(rawNode);
           if (isInEmbeddedPred(opNode)) {
             embeddingNodeNames.push(opNode.name);
             inEmbedding[opNode.name] = opNode;
@@ -1085,8 +1080,8 @@ export function buildGraph(
           if (isOutEmbeddedPred(opNode)) {
             embeddingNodeNames.push(opNode.name);
             outEmbedding[opNode.name] = opNode;
-            opNode.inputs.forEach((input) => {
-              let inputName = input.name;
+            opNode.inputs.forEach(input => {
+              const inputName = input.name;
               outEmbeddings[inputName] = outEmbeddings[inputName] || [];
               outEmbeddings[inputName].push(opNode);
             });
@@ -1121,7 +1116,7 @@ export function buildGraph(
             // Makes an OpNode out of either an input_arg of a library
             // function.
             let currentInputIndex = 0;
-            const processInput = (arg) => {
+            const processInput = (arg: proto.ArgDef) => {
               const opNode = processRawNode({
                 name: functionNodeName + NAMESPACE_DELIM + arg.name,
                 input: [],
@@ -1144,12 +1139,14 @@ export function buildGraph(
             // pbtxt configuration language is not rich enough to
             // differentiate between an array with 1 item vs 1 object
             // property.
-            if (func.signature.input_arg['name']) {
+            if ((func.signature.input_arg as any).name) {
               // There is only 1 input arg.
-              processInput(func.signature.input_arg);
+              processInput(func.signature.input_arg as proto.ArgDef);
             } else {
               // There are several input args.
-              func.signature.input_arg.forEach(processInput);
+              (func.signature.input_arg as proto.ArgDef[]).forEach(
+                processInput
+              );
             }
           }
 
@@ -1158,26 +1155,28 @@ export function buildGraph(
           // input_args, the output_args are already defined within the
           // node_defs of the library function.
           let currentOutputIndex = 0;
-          const outputArgNames = {};
+          const outputArgNames: { [key: string]: number } = {};
 
           // If the function has outputs, make nodes out of them.
           if (func.signature.output_arg) {
-            const processOutput = (arg) => {
+            const processOutput = (arg: proto.ArgDef) => {
               outputArgNames[
                 functionNodeName + NAMESPACE_DELIM + arg.name
               ] = currentOutputIndex;
               currentOutputIndex++;
             };
-            if (func.signature.output_arg['name']) {
+            if ((func.signature.output_arg as any).name) {
               // There is only 1 output arg.
-              processOutput(func.signature.output_arg);
+              processOutput(func.signature.output_arg as proto.ArgDef);
             } else {
               // There are several output args.
-              func.signature.output_arg.forEach(processOutput);
+              (func.signature.output_arg as proto.ArgDef[]).forEach(
+                processOutput
+              );
             }
           }
 
-          func.node_def.forEach((rawNode) => {
+          func.node_def.forEach(rawNode => {
             // Prefix with the name of the function so that the graph
             // correctly computes the hierarchy (and makes metanodes).
             rawNode.name = functionNodeName + '/' + rawNode.name;
@@ -1190,7 +1189,7 @@ export function buildGraph(
               opNode.functionOutputIndex = outputArgNames[rawNode.name];
             }
 
-            opNode.inputs.forEach((normalizedInput) => {
+            opNode.inputs.forEach(normalizedInput => {
               normalizedInput.name =
                 functionNodeName + NAMESPACE_DELIM + normalizedInput.name;
             });
@@ -1208,28 +1207,29 @@ export function buildGraph(
       },
       tracker
     )
-    .then((opNodes) => {
+    .then(opNodes => {
       // Create the graph data structure from the graphlib library.
       return util.runAsyncTask(
         'Building the data structure',
         70,
         () => {
-          let normalizedNameDict = mapStrictHierarchy(
+          const normalizedNameDict = mapStrictHierarchy(
             nodeNames,
             embeddingNodeNames
           );
-          let graph = new SlimGraph();
+          const graph = new SlimGraph();
 
           // Add the nodes to the graph.
-          opNodes.forEach((opNode) => {
-            let normalizedName = normalizedNameDict[opNode.name] || opNode.name;
+          opNodes.forEach(opNode => {
+            const normalizedName =
+              normalizedNameDict[opNode.name] || opNode.name;
             graph.nodes[normalizedName] = opNode;
             // Check if the node has out-embeddings. If yes, add them to the
             // node.
             if (opNode.name in outEmbeddings) {
               opNode.outEmbeddings = outEmbeddings[opNode.name];
               // Normalize the names of the out-embeddings.
-              opNode.outEmbeddings.forEach((node) => {
+              opNode.outEmbeddings.forEach(node => {
                 node.name = normalizedNameDict[node.name] || node.name;
               });
             }
@@ -1241,11 +1241,11 @@ export function buildGraph(
           // input
           // is an in-embedding, then add it to the node's in-embeddings
           // instead.
-          opNodes.forEach((opNode) => {
+          opNodes.forEach(opNode => {
             opNode.inputs.forEach((input, i) => {
-              let inputName = input.name;
+              const inputName = input.name;
               if (inputName in inEmbedding) {
-                let inEmbedNode = inEmbedding[inputName];
+                const inEmbedNode = inEmbedding[inputName];
                 opNode.inEmbeddings.push(inEmbedNode);
                 // Move the inputs of the in-embedding node into incoming
                 // edges of
@@ -1253,7 +1253,7 @@ export function buildGraph(
                 // node
                 // should be moved to the op node where the constant is
                 // embedded.
-                for (let embedInput of inEmbedNode.inputs) {
+                for (const embedInput of inEmbedNode.inputs) {
                   addEdgeToGraph(
                     graph,
                     normalizedNameDict[embedInput.name] || embedInput.name,
@@ -1266,8 +1266,8 @@ export function buildGraph(
               } else if (inputName in outEmbedding) {
                 // Move the inputs of the out-embedding node into inputs of
                 // the main node where the out-embedding points to.
-                let outEmbedNode = outEmbedding[inputName];
-                for (let embedInput of outEmbedNode.inputs) {
+                const outEmbedNode = outEmbedding[inputName];
+                for (const embedInput of outEmbedNode.inputs) {
                   addEdgeToGraph(
                     graph,
                     normalizedNameDict[embedInput.name] || embedInput.name,
@@ -1307,15 +1307,15 @@ export function buildGraph(
  */
 export function createGraph<N, E>(
   name: string,
-  type,
+  type: string | number,
   opt?: graphlib.GraphOptions
 ): graphlib.Graph<N, E> {
   const graphOptions = opt || {};
-  let graph = new graphlib.Graph<N, E>(graphOptions);
+  const graph = new graphlib.Graph<N, E>(graphOptions);
   graph.setGraph({
-    name: name,
+    name,
     rankdir: graphOptions.rankdir || 'BT', // BT,TB,LR,RL
-    type: type,
+    type,
   });
   return graph;
 }
@@ -1325,10 +1325,10 @@ export function createGraph<N, E>(
  * the specified types.
  */
 function getEmbedPredicate(types: string[]) {
-  return function(node: OpNode) {
+  return (node: OpNode) => {
     // check types
     for (let i = 0; i < types.length; i++) {
-      let regExp = new RegExp(types[i]);
+      const regExp = new RegExp(types[i]);
       if (typeof node.op === 'string' && node.op.match(regExp)) {
         return true;
       }
@@ -1342,7 +1342,7 @@ function getEmbedPredicate(types: string[]) {
  * where the node name is also a namespace.
  */
 export function getStrictName(name: string): string {
-  let parts = name.split(NAMESPACE_DELIM);
+  const parts = name.split(NAMESPACE_DELIM);
   return name + NAMESPACE_DELIM + '(' + parts[parts.length - 1] + ')';
 }
 
@@ -1362,25 +1362,25 @@ export function getStrictName(name: string): string {
 function mapStrictHierarchy(
   nodeNames: string[],
   embeddingNodeNames: string[]
-): {[oldName: string]: string} {
+): { [oldName: string]: string } {
   /** Dictionary that maps the old new to the new name */
-  let newNameDictionary: {[oldName: string]: string} = {};
+  const newNameDictionary: { [oldName: string]: string } = {};
   /** Set used to store all namespaces. */
-  let namespaceSet: {[namespace: string]: boolean} = {};
+  const namespaceSet: { [namespace: string]: boolean } = {};
   // sort the nodes to make prefix check faster
   nodeNames.sort();
   // look for nodes with a prefix a,a/b -> a/(a),a/b
   for (let i = 0; i < nodeNames.length - 1; ++i) {
-    let a = nodeNames[i];
+    const a = nodeNames[i];
     // Get all the parent namespaces of the current node
     // and add them in the namespace set.
     getHierarchicalPath(a)
       .slice(0, -1)
-      .forEach((ns) => {
+      .forEach(ns => {
         namespaceSet[ns] = true;
       });
     for (let j = i + 1; j < nodeNames.length; ++j) {
-      let b = nodeNames[j];
+      const b = nodeNames[j];
       if (b.startsWith(a)) {
         if (b.length > a.length && b.charAt(a.length) === NAMESPACE_DELIM) {
           newNameDictionary[a] = getStrictName(a);
@@ -1393,7 +1393,7 @@ function mapStrictHierarchy(
   }
   // Go through all the embedding node names and rename them in case they
   // collide with namespaces.
-  embeddingNodeNames.forEach((embeddingName) => {
+  embeddingNodeNames.forEach(embeddingName => {
     if (embeddingName in namespaceSet) {
       // Rename to follow strict hierarchy.
       newNameDictionary[embeddingName] = getStrictName(embeddingName);
@@ -1406,7 +1406,7 @@ function mapStrictHierarchy(
  * Returns a list of the degrees of each node in the graph.
  */
 function degreeSequence(graph: graphlib.Graph<any, any>): number[] {
-  let degrees = graph.nodes().map(function(name) {
+  const degrees = graph.nodes().map(name => {
     return graph.neighbors(name).length;
   });
   degrees.sort();
@@ -1420,8 +1420,8 @@ export function hasSimilarDegreeSequence(
   graph1: graphlib.Graph<any, any>,
   graph2: graphlib.Graph<any, any>
 ): boolean {
-  let dg1 = degreeSequence(graph1);
-  let dg2 = degreeSequence(graph2);
+  const dg1 = degreeSequence(graph1);
+  const dg2 = degreeSequence(graph2);
 
   for (let i = 0; i < dg1.length; i++) {
     if (dg1[i] !== dg2[i]) {
@@ -1438,9 +1438,9 @@ export function hasSimilarDegreeSequence(
  */
 export function getHierarchicalPath(
   name: string,
-  seriesNames?: {[name: string]: string}
+  seriesNames?: { [name: string]: string }
 ): string[] {
-  let path: string[] = [];
+  const path: string[] = [];
   let i = name.indexOf(NAMESPACE_DELIM);
   // Push all parent portions of the path.
   while (i >= 0) {
@@ -1450,7 +1450,7 @@ export function getHierarchicalPath(
   // If the node's path is under a series, then add the series node name to the
   // hierarchical path as the parent of the leaf.
   if (seriesNames) {
-    let seriesName = seriesNames[name];
+    const seriesName = seriesNames[name];
     if (seriesName) {
       path.push(seriesName);
     }
@@ -1489,7 +1489,7 @@ export function getGroupSeriesNodeButtonString(group: SeriesGroupingType) {
  * to ungroup if the series is not already in the map.
  */
 export function toggleNodeSeriesGroup(
-  map: {[name: string]: SeriesGroupingType},
+  map: { [name: string]: SeriesGroupingType },
   name: string
 ) {
   if (!(name in map) || map[name] === SeriesGroupingType.GROUP) {

@@ -36,11 +36,30 @@ export enum SelectionType {
   PROFILE = 'profile',
 }
 
-
 /**
  * Execution stats for the node.
  */
 export class NodeStats {
+  /**
+   * Absolute start time for the very first kernel execution of this op.
+   */
+  startTime = Number.MAX_SAFE_INTEGER;
+  /**
+   * Absolute end time for the very last kernel execution of this op.
+   */
+  endTime = 0;
+  /**
+   * Total number of bytes used for the node. Sum of all children
+   * if it is a Group node.
+   */
+  totalBytes = 0;
+
+  /**
+   * The shape of each output tensors, if there are any.
+   * Empty if it is a Group node.
+   */
+  outputSize: number[][];
+
   constructor(outputSize: number[][]) {
     this.outputSize = outputSize;
   }
@@ -73,26 +92,6 @@ export class NodeStats {
       this.totalBytes = totalBytes;
     }
   }
-
-  /**
-   * Absolute start time for the very first kernel execution of this op.
-   */
-  startTime: number;
-  /**
-   * Absolute end time for the very last kernel execution of this op.
-   */
-  endTime: number;
-  /**
-   * Total number of bytes used for the node. Sum of all children
-   * if it is a Group node.
-   */
-  totalBytes = 0;
-
-  /**
-   * The shape of each output tensors, if there are any.
-   * Empty if it is a Group node.
-   */
-  outputSize: number[][];
 
   /**
    * Combines the specified stats with the current stats.
