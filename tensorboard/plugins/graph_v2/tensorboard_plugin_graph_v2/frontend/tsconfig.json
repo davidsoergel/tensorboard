@@ -1,10 +1,9 @@
 {
-  "compileOnSave": false,
+  "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
+    "rootDir": ".",
     "baseUrl": "./",
     "outDir": "./dist/out-tsc",
-    "sourceMap": true,
-    "declaration": false,
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "module": "esnext",
@@ -19,8 +18,12 @@
       "dom"
     ]
   },
-  "angularCompilerOptions": {
-    "fullTemplateTypeCheck": true,
-    "strictInjectionParameters": true
-  }
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+"angularCompilerOptions": {
+  "fullTemplateTypeCheck": true,
+  "strictInjectionParameters": true
+}
 }
