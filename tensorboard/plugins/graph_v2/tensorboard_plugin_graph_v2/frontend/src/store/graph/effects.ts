@@ -24,8 +24,10 @@ import {
   loadGraphFailure,
   loadGraphRequest,
   loadGraphSuccess,
-  setGraphAndHierarchy,
+  setLegacyGraphAndHierarchy,
   setGraphName,
+  setGraph,
+  loadTestGraphRequest,
 } from './actions';
 import {
   fetchAndConstructHierarchicalGraph,
@@ -33,6 +35,8 @@ import {
 } from './legacy/loader';
 import { GraphUIState } from './types';
 import { Tracker } from './legacy/util';
+import { HdagNode, HdagRoot } from './hdag';
+import { testHdag } from './hdag_test';
 
 @Injectable()
 export class GraphV2Effects {
@@ -56,7 +60,25 @@ export class GraphV2Effects {
     */
     switchMap((graph: GraphAndHierarchy) => [
       setGraphName('loaded'),
-      setGraphAndHierarchy(graph),
+      setLegacyGraphAndHierarchy(graph),
+      loadGraphSuccess(),
+    ]),
+    catchError(error => {
+      console.log(error);
+      return of(loadGraphFailure(error));
+    })
+  );
+
+  @Effect()
+  loadTestGraph$ = this.action$.pipe(
+    ofType(loadTestGraphRequest),
+    switchMap(action => {
+      console.log(`Going to load test graph`);
+      return of(testHdag);
+    }),
+    switchMap((graph: HdagRoot) => [
+      setGraphName('loaded'),
+      setGraph(graph),
       loadGraphSuccess(),
     ]),
     catchError(error => {

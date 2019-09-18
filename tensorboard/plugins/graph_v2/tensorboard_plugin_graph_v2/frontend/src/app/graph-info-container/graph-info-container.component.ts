@@ -2,8 +2,19 @@ import { Component, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { select, Store } from '@ngrx/store';
 import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { loadGraphRequest, selectGraphName } from 'src/store/graph';
+import {
+  loadGraphRequest,
+  selectGraphName,
+  selectLegacyGraphAndHierarchy,
+  loadTestGraphRequest,
+  selectGraph,
+  selectVisibleGraph,
+  selectVisibleEdges,
+} from 'src/store/graph';
 import { GraphV2PluginState } from 'src/store/types';
+import { GraphAndHierarchy } from 'src/store/graph/legacy/loader';
+import { Hierarchy } from 'src/store/graph/legacy/hierarchy';
+import { SlimGraph } from 'src/store/graph/legacy/graph';
 
 @Component({
   selector: 'app-graph-info-container',
@@ -11,17 +22,46 @@ import { GraphV2PluginState } from 'src/store/types';
   styleUrls: ['./graph-info-container.component.scss'],
 })
 export class GraphInfoContainerComponent implements OnInit, OnChanges {
-  graphName$: Observable<string>;
+  graphName$ = this.store.pipe(select(selectGraphName));
+
+  // TODO(soergel): this probably fires on every update
+  visibleEdges$ = this.store.pipe(select(selectVisibleEdges));
+  /*
+  legacyGraph$ = this.store.pipe(
+    select(selectLegacyGraphAndHierarchy),
+    switchMap(gh => {
+      if (gh == null) {
+        return of(null);
+      }
+      console.log('LOADED GRAPH');
+      console.log(gh.graph);
+      return of(gh.graph);
+    })
+  );
+  legacyHierarchy$ = this.store.pipe(
+    select(selectLegacyGraphAndHierarchy),
+    switchMap(gh => {
+      if (gh == null) {
+        return of(null);
+      }
+      console.log('LOADED HIERARCHY');
+      console.log(gh.graphHierarchy);
+      return of(gh.graphHierarchy);
+    })
+  );
+  */
+
+  // graph$ = this.store.pipe(select(selectGraph));
+  // visibleGraph$ = this.store.pipe(select(selectVisibleGraph));
 
   onClick() {
     // const action = SetGraphName('Hello world');
-    const action = loadGraphRequest(
+    /*const action = loadGraphRequest(
       'http://localhost:6006/data/plugin/graphs/graph?run=1-learning_rate%3D5e-05&conceptual=false'
-    );
+    );*/
+    const action = loadTestGraphRequest();
     //      this._graphUrl('1-learning_rate', 100, 'aoeu')
     //    );
-    console.log(`Dispatching:`);
-    console.log(action);
     this.store.dispatch(action);
   }
 
@@ -43,16 +83,7 @@ export class GraphInfoContainerComponent implements OnInit, OnChanges {
 
   constructor(private store: Store<GraphV2PluginState>) {}
 
-  ngOnInit() {
-    console.log(this.store);
-    this.graphName$ = this.store.pipe(
-      switchMap(a => {
-        console.log(a);
-        return of(a);
-      }),
-      select(selectGraphName)
-    );
-  }
+  ngOnInit() {}
 
   ngOnChanges(changes: SimpleChanges): void {
     console.log(changes);

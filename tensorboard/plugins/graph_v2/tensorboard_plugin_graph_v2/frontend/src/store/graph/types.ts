@@ -16,17 +16,22 @@
  */
 
 import { GraphAndHierarchy } from './legacy/loader';
+import { HdagNode, HdagVisibleNode, HdagRoot, HdagVisibleRoot } from './hdag';
 
 export interface GraphUIState {
   // TODO(soergel): this is a stub
   graphName: string;
-  graphAndHierarchy: GraphAndHierarchy; // try using the legacy representation for now
+  legacyGraphAndHierarchy: GraphAndHierarchy; // try using the legacy representation for now
   // graph: ...
   // layout: ...
+  graph: HdagRoot;
+  visibleGraph: HdagVisibleRoot;
 }
 
 /** Default values for the CanvasWithLayout. */
 export const INITIAL_GRAPH_UI_STATE: GraphUIState = {
   graphName: 'Untitled',
-  graphAndHierarchy: null,
+  legacyGraphAndHierarchy: null,
+  graph: null,
+  visibleGraph: null,
 };
